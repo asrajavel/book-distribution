@@ -51,6 +51,9 @@
 html, body { height: 100%; }
 html { overflow-y: scroll; } /* always reserve the scrollbar so short and long screens are the same width */
 body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--text); font-size: 16px; }
+/* App-like: long-press doesn't select labels (and open Chrome's word search); typing fields still do. */
+body { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+input, textarea { -webkit-user-select: text; user-select: text; }
 button, input, select { font: inherit; color: inherit; }
 button { cursor: pointer; }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
