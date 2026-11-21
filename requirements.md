@@ -4,7 +4,7 @@ An app for ISKCON temple volunteers to record the books they distribute, and for
 main volunteers to track books and money moving between people.
 
 Status: built and live at https://asrajavel.github.io/book-distribution/ in the look of `mockup-standard.html`.
-The books in the database are the mockup's placeholders until the real list is in.
+The books are the temple's list (WYBM2026 sheet): 277 books in 10 languages plus kids books.
 
 ## 1. People and sign-in
 
@@ -28,15 +28,19 @@ The books in the database are the mockup's placeholders until the real list is i
   Current event is greyed out while there is no open event.
 - **Books:** a title in a language (Bhagavad Gita in Tamil, English, Hindi, Kannada, ...).
   Each has one fixed price and a kind: Common, Rare or Kids. No points.
+  Five common books per language (most sold at Janmastami); kids books are listed most sold first.
   Kids books (mostly coloring books) are English only.
-- Books show by short name where one is set (BG, Krsna, SSR, Isopanisad), else the full name,
+- Books show by short name (BG, Krsna, SSR, Iso), else the full name; search also matches the full name,
   with the language as a muted 3-letter code (ENG).
+- Each title has one cover for all its languages (`covers/`, named after the book); sets show the stacked volumes.
+  Titles without a known cover show a grey slot.
 - **Distribute, no open event:** Start event form. Date (defaults to today, can be any past date),
   place (see Places), volunteers (search and tap to add; added ones move up as chips with ×; the host is always on it).
 - **Distribute, event open** ("Book distribution") must be fast on a phone:
-  - One tag row, scrolls sideways: ENG, KIDS, TAM, HIN, KAN, TEL. ENG is selected by default.
+  - One tag row, scrolls sideways: ENG, KIDS, TAM, HIN, KAN, TEL, then the other languages A to Z. ENG is selected by default.
   - A language tag shows the common books in that language, then the rare books
-    folded under "More books" (shows how many are entered). Search also finds rare books.
+    folded under "More books" in A to Z order (shows how many are entered). Search also finds rare books.
+    Folded, the rare books already entered stay listed under it. The tag row keeps its sideways scroll.
   - KIDS shows the kids books.
   - Tap + / − on each book.
   - Search box: matches part of the name, or initials (KB = Krishna Book).
@@ -54,7 +58,7 @@ The books in the database are the mockup's placeholders until the real list is i
   Leaving Edit entry or Edit event with changes asks "Discard changes?".
 - Slow saves show "Saving…"; no network shows "No internet. Try again."
 - Motion (off with the phone's reduce-motion setting): deeper screens slide in from the right and back slides them out,
-  tabs fade and a bar above the tabs slides to the chosen one; popups and the toast rise in; buttons shrink when pressed; a count bumps on + / −; a just-saved entry is highlighted once.
+  tabs fade and a bar above the tabs slides to the chosen one; the selected book tag's pill slides to the tapped tag; popups and the toast rise in; buttons shrink when pressed; a count bumps on + / −; a just-saved entry is highlighted once.
 - **Delete** (host): "Delete entry" or "Delete event" in the bottom bar of Edit entry and Edit event,
   with a popup: "Delete this event?" plus how many entries go with it. Rows are really deleted; the audit log keeps them for recovery.
 
@@ -94,8 +98,9 @@ The books in the database are the mockup's placeholders until the real list is i
 
 ## 5. Open points
 
-- Real book list and prices.
-- Which books are common and which are rare.
+- Full name of SP SKC (guessed). Kannada HKC has no price, so it isn't loaded.
+- No cover yet: SP SKC, Sri Chaitanya Sambhrama, Chaitanya Mahaprabhu (TEL), and kids Gopal Krishna, Dasavatara,
+  Wonderful Krsna, Radha Krsna, Ekalavya, Govinda Krishna, Krishna Lila.
 - The city the map starts at when location is denied and no place is saved (`CITY` in app.js, a placeholder).
 - Later: when location fails (Start event, New location, the location button), a popup by reason:
   blocked (steps to allow it in Chrome or iPhone settings; the app can't ask again), phone location off, or timed out (try again).

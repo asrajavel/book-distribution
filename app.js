@@ -139,12 +139,17 @@ function picker(p) {
     return `<button class="chip" type="button" data-lang="${t}" aria-pressed="${t === p.lang}">${t}${n ? `<b>${n}</b>` : ""}</button>`;
   }).join("");
   return `<label class="field" aria-label="Search books">${ICON.search}<input id="pick-q" type="search" placeholder="Search books" data-bind="q" value="${esc(p.q)}"></label>
-    <div class="chips" role="group" aria-label="Books">${chips}</div><ul class="list" id="pick-list">${pickRows(p)}</ul>`;
+    <div class="chips" role="group" aria-label="Books"><i class="cind" aria-hidden="true"></i>${chips}</div><ul class="list" id="pick-list">${pickRows(p)}</ul>`;
 }
+// One cover per title, shared by every language: covers/<book name as a slug>.webp.
+// A title without one gets the grey slot, and is remembered (self.noCover) so it isn't fetched again on every render.
+const coverOf = b => `covers/${b.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}.webp`;
+const GREY = `<span class="cover" style="background:var(--fill)"></span>`;
 function bookRow(p, b) {
-  const n = p.qty[b.id] || 0;
+  const n = p.qty[b.id] || 0, src = coverOf(b);
   return `<li class="row${n ? " on" : ""}">
-      <span class="cover" style="background:var(--fill)"></span>
+      ${/** @type {any} */ (self).noCover?.has(src) ? GREY : `<img class="cover" src="${src}" alt="" loading="lazy"
+        onerror="(self.noCover ||= new Set).add(this.getAttribute('src')); this.outerHTML = this.dataset.g" data-g="${esc(GREY)}">`}
       <div class="info"><div class="name">${SHORT(b)} <span class="lang">${b.language}</span></div><div class="sub num">${rupees(b.price)}</div></div>
       <div class="step">
         <button type="button" data-id="${b.id}" data-d="-1" aria-label="One less ${esc(b.name)}"${n ? "" : " disabled"}>−</button><output>${n}</output>
@@ -161,7 +166,13 @@ function pickRows(p) {
   const n = Object.entries(p.qty).reduce((s, [id, k]) => s + (BOOK(+id).kind === "rare" && inTag(BOOK(+id), p.lang) ? k : 0), 0);
   return main.map(b => bookRow(p, b)).join("") + (!rare.length || q ? "" :
     `<li><button class="link" type="button" data-act="more" aria-expanded="${!!p.more}" style="width:100%">${p.more ? "Fewer books" : "More books"}${n ? ` · ${n}` : ""}</button></li>`)
-    + (p.more || q ? rare.map(b => bookRow(p, b)).join("") : "");
+    + (p.more || q ? rare : keepRare(p, rare)).map(b => bookRow(p, b)).join("");
+}
+// Folded, the rare books already entered stay listed under "More books", and stay until the fold or tag changes (no row vanishes at 0).
+function keepRare(p, rare) {
+  const kept = rare.filter(b => p.qty[b.id] || p.seen?.[b.id]);
+  p.seen = Object.fromEntries(kept.map(b => [b.id, 1]));
+  return kept;
 }
 
 // ---------- shared pieces ----------
@@ -379,8 +390,21 @@ function render() {
       ${v.me ? `<button class="round" type="button" data-act="account" aria-label="Account">${face(D.me.name, D.me.photo)}</button>` : ""}</header>`;
   S.backTo = v.back;
   const open = !!$("view").querySelector(".modal"); // a popup already showing doesn't animate again
+  // The tag row keeps its sideways scroll, and its pill slides from the last tag to this one.
+  const same = $("view").dataset.screen === S.screen, was = same && /** @type {HTMLElement|null} */ ($("view").querySelector(".cind"));
+  const sx = same ? $("view").querySelector(".chips")?.scrollLeft : 0, from = was && [was.offsetLeft, was.offsetWidth];
   $("view").innerHTML = head + v.body + (S.acct ? modal(esc(D.me.name), "acctno", "signout", "Sign out", "btn soft") : "")
     + (S.leave ? modal("Discard changes?", "keep", "discard", "Discard") : "");
+  $("view").dataset.screen = S.screen;
+  const chips = $("view").querySelector(".chips"), pill = /** @type {HTMLElement|null} */ ($("view").querySelector(".cind"));
+  if (chips && sx) chips.scrollLeft = sx;
+  const on = /** @type {HTMLElement|null} */ (chips?.querySelector('[aria-pressed="true"]'));
+  if (pill && on) {
+    pill.style.cssText = `left:${on.offsetLeft}px;width:${on.offsetWidth}px`;
+    if (from && from[0] !== on.offsetLeft && !still.matches)
+      pill.animate([{ transform: `translateX(${from[0] - on.offsetLeft}px)`, width: `${from[1]}px` }, { transform: "none", width: `${on.offsetWidth}px` }],
+        { duration: 280, easing: "cubic-bezier(.2, .8, .2, 1)" });
+  }
   if (open) $("view").querySelector(".modal")?.classList.add("still");
   if ($("view").querySelector(".flash")) S.flash = null; // the saved entry has been seen once
   $("view").style.flex = v.bare || v.fill ? "1" : "";
@@ -548,7 +572,7 @@ const ACTS = {
   hours: () => { const ev = evOf(S.pv); S.hrs = { ev: ev.id, back: "pastev", h: { ...ev.hours } }; go("hours"); },
   atab: a => { S.adminTab = a; render(); },
   period: a => { S.period = a; render(); },
-  more: () => { pick.more = !pick.more; render(); },
+  more: () => { pick.more = !pick.more; pick.seen = null; render(); },
   approve: async id => { await q(sb.rpc("approve", { p_person: +id })); await load(); render(); toast("Approved"); },
   reject: id => { S.rej = +id; render(); },
   rejno: () => { S.rej = null; render(); },
@@ -567,7 +591,7 @@ async function run(fn, arg, btn) {
 document.addEventListener("click", e => {
   const t = /** @type {Element} */ (e.target);
   const l = t.closest("[data-lang]"), b = /** @type {HTMLElement|null} */ (t.closest("[data-id]")), a = /** @type {HTMLElement|null} */ (t.closest("[data-act]"));
-  if (l) { pick.lang = /** @type {HTMLElement} */ (l).dataset.lang; render(); }
+  if (l) { pick.lang = /** @type {HTMLElement} */ (l).dataset.lang; pick.seen = null; render(); }
   else if (b) {
     const k = b.dataset.id;
     pick.qty[k] = Math.max(0, (pick.qty[k] || 0) + Number(b.dataset.d));

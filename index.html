@@ -257,12 +257,13 @@ body:has(.app.std) { background: var(--bg); }
 .std .field input::placeholder { color: var(--muted); }
 
 /* language tags as one segmented control that scrolls sideways when it runs out of room */
-.std .chips[role=group] { gap: 2px; margin: 0; padding: 2px; border-radius: 10px; background: var(--fill); }
+.std .chips[role=group] { position: relative; gap: 2px; margin: 0; padding: 2px; border-radius: 10px; background: var(--fill); }
 .std .chips[role=group] .chip {
-  flex: 1 0 auto; justify-content: center; height: 34px; padding: 0 14px; border: 0; border-radius: 8px;
+  position: relative; z-index: 1; flex: 1 0 auto; justify-content: center; height: 34px; padding: 0 14px; border: 0; border-radius: 8px;
   background: transparent; color: var(--fg); font-size: 15px; font-weight: 600;
 }
-.std .chips[role=group] .chip[aria-pressed="true"] { background: var(--surface); color: var(--fg); box-shadow: 0 1px 3px rgb(0 0 0 / .14), 0 1px 1px rgb(0 0 0 / .06); }
+/* the selected tag's white pill, one element that slides between tags (placed by app.js) */
+.std .chips .cind { position: absolute; top: 2px; height: 34px; border-radius: 8px; background: var(--surface); box-shadow: 0 1px 3px rgb(0 0 0 / .14), 0 1px 1px rgb(0 0 0 / .06); }
 .std .chip b { min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--accent); color: var(--accent-fg); font-size: 12px; line-height: 18px; text-align: center; }
 
 /* one grouped list, hairlines inset past the cover */
@@ -350,7 +351,6 @@ body:has(.app.std) { background: var(--bg); }
 .std .map .caption .seg { flex: 1; }
 .std .evf label.row:focus-within { box-shadow: inset 0 0 0 2px var(--accent); border-radius: 12px; }
 @media (prefers-reduced-motion: no-preference) {
-  .std .chips[role=group] .chip { transition: background-color .18s ease-out, box-shadow .18s ease-out; }
   .std .step output { transition: background-color .15s ease-out, color .15s ease-out; }
 }
 
