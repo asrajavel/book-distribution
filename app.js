@@ -318,7 +318,7 @@ const VIEWS = {
     bar: saveBar() }),
 
   admin: () => {
-    const tabs = `<div class="seg">${[["map", "Map"], ["people", "People"], ["events", "Events"]].map(([v, l]) =>
+    const tabs = `<div class="seg"><i class="cind" aria-hidden="true"></i>${[["map", "Map"], ["people", "People"], ["events", "Events"]].map(([v, l]) =>
       `<button type="button" data-act="atab" data-arg="${v}" aria-pressed="${v === S.adminTab}">${l}${v === "people" && D.reqs.length ? `<b class="badge" aria-label="${D.reqs.length} waiting">${D.reqs.length}</b>` : ""}</button>`).join("")}</div>`;
     if (S.adminTab === "events") return { title: "Admin", me: true, body: tabs + (D.events.length ? `<ul class="list">${D.events.map(ev => `<li class="row top-align">
       <div class="info"><div class="name">${NAME(ev.host_id)} · ${day(ev.date)} · ${PLACE(ev.place_id)}${ev.closed_at ? "" : ' <span class="lang">open</span>'}</div>
@@ -329,7 +329,7 @@ const VIEWS = {
         <button class="round" type="button" data-act="approve" data-arg="${p.id}" aria-label="Approve ${esc(p.name)}">${ICON.ok}</button></li>`).join("")}</ul>` : "")
       + `${sec("People")}<ul class="list">${[...D.active].map(u => person(u, "", 0)).join("")}</ul>`
       + (S.rej ? modal(`Reject ${esc(D.reqs.find(p => p.id === S.rej)?.name)}?`, "rejno", "rejyes", "Reject", undefined, "They can sign up again.") : "") };
-    const period = `<div class="caption"><div class="seg" role="group" aria-label="Period">${Object.entries(PERIODS).map(([k, [l]]) =>
+    const period = `<div class="caption"><div class="seg" role="group" aria-label="Period"><i class="cind" aria-hidden="true"></i>${Object.entries(PERIODS).map(([k, [l]]) =>
         `<button type="button" data-act="period" data-arg="${k}" aria-pressed="${k === S.period}">${l}</button>`).join("")}</div></div>`;
     return { title: "Admin", me: true, body: tabs + `<div class="map"><div class="lmap" id="map" role="img" aria-label="Books distributed by place"></div>${period}</div>` };
   },
@@ -390,21 +390,22 @@ function render() {
       ${v.me ? `<button class="round" type="button" data-act="account" aria-label="Account">${face(D.me.name, D.me.photo)}</button>` : ""}</header>`;
   S.backTo = v.back;
   const open = !!$("view").querySelector(".modal"); // a popup already showing doesn't animate again
-  // The tag row keeps its sideways scroll, and its pill slides from the last tag to this one.
-  const same = $("view").dataset.screen === S.screen, was = same && /** @type {HTMLElement|null} */ ($("view").querySelector(".cind"));
-  const sx = same ? $("view").querySelector(".chips")?.scrollLeft : 0, from = was && [was.offsetLeft, was.offsetWidth];
+  // Each tag row / segmented control keeps its sideways scroll, and its pill slides from the last choice to this one.
+  const same = $("view").dataset.screen === S.screen;
+  const was = same ? [...$("view").querySelectorAll(".cind")].map(c => [c.offsetLeft, c.offsetWidth, c.parentElement.scrollLeft]) : [];
   $("view").innerHTML = head + v.body + (S.acct ? modal(esc(D.me.name), "acctno", "signout", "Sign out", "btn soft") : "")
     + (S.leave ? modal("Discard changes?", "keep", "discard", "Discard") : "");
   $("view").dataset.screen = S.screen;
-  const chips = $("view").querySelector(".chips"), pill = /** @type {HTMLElement|null} */ ($("view").querySelector(".cind"));
-  if (chips && sx) chips.scrollLeft = sx;
-  const on = /** @type {HTMLElement|null} */ (chips?.querySelector('[aria-pressed="true"]'));
-  if (pill && on) {
+  $("view").querySelectorAll(".cind").forEach((/** @type {HTMLElement} */ pill, i) => {
+    const row = /** @type {HTMLElement} */ (pill.parentElement), from = was[i];
+    if (from) row.scrollLeft = from[2];
+    const on = /** @type {HTMLElement|null} */ (row.querySelector('[aria-pressed="true"]'));
+    if (!on) return;
     pill.style.cssText = `left:${on.offsetLeft}px;width:${on.offsetWidth}px`;
     if (from && from[0] !== on.offsetLeft && !still.matches)
       pill.animate([{ transform: `translateX(${from[0] - on.offsetLeft}px)`, width: `${from[1]}px` }, { transform: "none", width: `${on.offsetWidth}px` }],
         { duration: 280, easing: "cubic-bezier(.2, .8, .2, 1)" });
-  }
+  });
   if (open) $("view").querySelector(".modal")?.classList.add("still");
   if ($("view").querySelector(".flash")) S.flash = null; // the saved entry has been seen once
   $("view").style.flex = v.bare || v.fill ? "1" : "";
