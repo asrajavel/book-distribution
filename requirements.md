@@ -88,6 +88,9 @@ The books in the database are the mockup's placeholders until the real list is i
 - Real book list and prices.
 - Which books are common and which are rare.
 - The city the map starts at when location is denied and no place is saved (`CITY` in app.js, a placeholder).
+- Later: when location fails (Start event, New location, the location button), a popup by reason:
+  blocked (steps to allow it in Chrome or iPhone settings; the app can't ask again), phone location off, or timed out (try again).
+  The browser's own permission prompt stays as the first ask.
 
 ## 6. Planned build
 
