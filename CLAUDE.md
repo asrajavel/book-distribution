@@ -43,6 +43,8 @@ update it whenever a requirement is decided or changed.
   instead of the field: click the field by coordinates (getBoundingClientRect), check its value with JS, reload to confirm a save.
 - `impeccable detect` can't see screens built in app.js and only reaches the sign-in page on localhost:
   review the app by walking its screens at phone size instead.
+- `.claude/launch.json` hard-codes port 8000 in its arguments. If another session's preview holds 8000, preview_start
+  moves to another port but the server never starts there: stop the other preview first.
 - If you spent real effort discovering something that the next agent would also need
   and couldn't get quickly from the files (a gotcha, a non-obvious command, a hidden
   constraint), suggest one line for CLAUDE.md at the end of your reply. Don't suggest
