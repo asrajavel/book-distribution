@@ -151,7 +151,8 @@ function bookRow(p, b) {
 function pickRows(p) {
   const q = p.q || "", hit = b => matches(b.name, q) || matches(b.short_name || "", q);
   const here = D.books.filter(b => inTag(b, p.lang) && hit(b));
-  const main = here.filter(b => b.kind !== "rare"), rare = here.filter(b => b.kind === "rare");
+  const label = b => b.short_name || b.name; // common and kids keep id order (most sold first); rare is alphabetical
+  const main = here.filter(b => b.kind !== "rare"), rare = here.filter(b => b.kind === "rare").sort((a, b) => label(a).localeCompare(label(b)));
   if (!here.length) return `<li class="muted" style="padding:12px;text-align:center">No book found</li>`;
   const n = Object.entries(p.qty).reduce((s, [id, k]) => s + (BOOK(+id).kind === "rare" && inTag(BOOK(+id), p.lang) ? k : 0), 0);
   return main.map(b => bookRow(p, b)).join("") + (!rare.length || q ? "" :
@@ -248,7 +249,7 @@ const VIEWS = {
   add: () => {
     const ev = cur();
     if (!ev) return { title: "Start event", me: true, body: evForm(startForm()), bar: saveBar("Start event") };
-    return { title: "Book distribution", sub: `${day(ev.date)} · ${PLACE(ev.place_id)}`, me: true, bar: totalBar(tot(pickLines(S.add.qty))),
+    return { title: "Book distribution", me: true, bar: totalBar(tot(pickLines(S.add.qty))),
       body: picker(S.add) };
   },
   event: () => {
@@ -363,7 +364,7 @@ function render() {
   const v = VIEWS[S.screen]();
   const head = v.bare ? "" : `<header class="top">
       ${v.back ? `<button class="round" type="button" data-act="back" aria-label="Back">${ICON.back}</button>` : ""}
-      <h1>${v.sub ? `<span class="evline">${v.sub}</span>` : ""}${v.title}</h1>
+      <h1>${v.title}</h1>
       ${v.me ? `<button class="round" type="button" data-act="account" aria-label="Account">${face(D.me.name, D.me.photo)}</button>` : ""}</header>`;
   S.backTo = v.back;
   const open = !!$("view").querySelector(".modal"); // a popup already showing doesn't animate again
