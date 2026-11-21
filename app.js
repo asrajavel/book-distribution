@@ -196,7 +196,7 @@ function evBody(ev) {
     <ul class="list">${ev.team.map(u => person(u, `<div class="end num"><strong>${hr(ev.hours[u] || 0)} h</strong></div>`, ev.host_id)).join("")}</ul>`;
   return `<div class="row"><div class="info"><div class="name">${day(ev.date)} · ${PLACE(ev.place_id)}</div><div class="sub">${names(ev)}</div></div>
       ${mine ? editBtn("evedit", "", "Edit event") : ""}</div>
-    ${hours}${sec("Entries", mine ? "addentry" : "", "Add", "Add entry")}${ev.entries.length ? `<ul class="list">${ev.entries.map(x => `<li class="row top-align">
+    ${hours}${sec("Entries", mine ? "addentry" : "", "Add", "Add entry")}${ev.entries.length ? `<ul class="list">${ev.entries.map(x => `<li class="row top-align${x.id === S.flash ? " flash" : ""}">
       <div class="info"><div class="name num">${time(x.at)}</div>${itemList(x.entry_lines)}</div>${totalEnd(x.entry_lines)}
       ${mine ? editBtn("edit", x.id, "Edit entry") : ""}</li>`).join("")}</ul>` : EMPTY("No entries yet")}`;
 }
@@ -365,8 +365,11 @@ function render() {
       <h1>${v.sub ? `<span class="evline">${v.sub}</span>` : ""}${v.title}</h1>
       ${v.me ? `<button class="round" type="button" data-act="account" aria-label="Account">${face(D.me.name, D.me.photo)}</button>` : ""}</header>`;
   S.backTo = v.back;
+  const open = !!$("view").querySelector(".modal"); // a popup already showing doesn't animate again
   $("view").innerHTML = head + v.body + (S.acct ? modal(esc(D.me.name), "acctno", "signout", "Sign out", "btn soft") : "")
     + (S.leave ? modal("Discard changes?", "keep", "discard", "Discard") : "");
+  if (open) $("view").querySelector(".modal")?.classList.add("still");
+  if ($("view").querySelector(".flash")) S.flash = null; // the saved entry has been seen once
   $("view").style.flex = v.bare || v.fill ? "1" : "";
   $("bottom").hidden = !!v.bare;
   $("bottom").innerHTML = v.bare ? "" : (v.bar || "") + `<nav class="tabs" aria-label="Sections">${
@@ -397,12 +400,21 @@ window.addEventListener("popstate", () => {
   if (busy) return syncBack(); // mid-save: stay put
   backAct()?.();
 });
-const toTab = a => { S.tab = a; go(a); }; // after a save or delete: nothing left to discard
-function go(screen) { S.screen = screen; S.del = null; S.acct = false; S.leave = null; render(); window.scrollTo(0, 0); }
+const toTab = a => { S.tab = a; go(a, "fade"); }; // after a save or delete: nothing left to discard
+// Deeper screens slide in from the right, back slides them out, tabs fade (where the browser has View Transitions).
+const still = matchMedia("(prefers-reduced-motion: reduce)");
+function go(screen, dir = screen === S.backTo ? "back" : "fwd") {
+  S.screen = screen; S.del = null; S.acct = false; S.leave = null;
+  const show = () => { render(); window.scrollTo(0, 0); };
+  if (!document.startViewTransition || still.matches) return show();
+  document.documentElement.dataset.nav = dir;
+  document.startViewTransition(show);
+}
 let toastTimer;
 function toast(msg) {
-  const t = $("toast"); t.textContent = msg; t.hidden = false;
-  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.hidden = true, 2000);
+  const t = $("toast"); t.textContent = msg; t.hidden = false; t.classList.remove("out");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { t.classList.add("out"); toastTimer = setTimeout(() => t.hidden = true, 200); }, 2000);
 }
 const errMsg = e => !navigator.onLine || /fetch|network/i.test(e?.message || "") ? "No internet. Try again."
   : e?.code === "23505" && /places_name/.test(e?.message) ? "That name is already used" : e?.code === "42501" ? "Not allowed" : e?.message || "Something went wrong";
@@ -421,11 +433,11 @@ async function save() {
   }
   if (s === "add") {
     if (!tot(pickLines(S.add.qty)).n) return toast("Add at least one book");
-    await q(sb.rpc("save_entry", { p_event: ev.id, p_lines: lineArg(S.add.qty) }));
+    S.flash = await q(sb.rpc("save_entry", { p_event: ev.id, p_lines: lineArg(S.add.qty) }));
     S.add = { ...S.add, qty: {}, q: "" }; await load(); render(); // stay on the page, cleared for the next entry
   } else if (s === "edit") {
     if (!tot(pickLines(S.ed.qty)).n) return toast("Add at least one book");
-    await q(sb.rpc("save_entry", { p_event: S.ed.ev, p_lines: lineArg(S.ed.qty), p_entry: S.ed.entry })); // books not listed are removed
+    S.flash = await q(sb.rpc("save_entry", { p_event: S.ed.ev, p_lines: lineArg(S.ed.qty), p_entry: S.ed.entry })); // books not listed are removed
     await load(); go(S.ed.back);
   } else if (s === "evedit") {
     const f = S.ef;
@@ -545,6 +557,7 @@ document.addEventListener("click", e => {
     pick.qty[k] = Math.max(0, (pick.qty[k] || 0) + Number(b.dataset.d));
     if (!pick.qty[k]) delete pick.qty[k];
     render();
+    document.querySelector(`[data-id="${k}"][data-d="1"]`)?.previousElementSibling?.classList.add("bump");
   } else if (a) run(ACTS[a.dataset.act], a.dataset.arg, a);
 });
 document.addEventListener("input", e => { // keep typed values without redrawing the screen
