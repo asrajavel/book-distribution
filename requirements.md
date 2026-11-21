@@ -8,11 +8,11 @@ Nothing real is built yet. All names, books, prices and places in the mockup are
 
 ## 1. People and sign-in
 
-- Sign-in is with a Google account.
+- Sign-in is with a Google account only. The phone number is only stored, never used to sign in.
 - On first sign-in (sign up) the person gives name and phone number, once.
-- A person added by phone number before they ever sign in is linked to their account
-  automatically when they later sign up with that phone number.
-- **Admin** is a per-person switch, set by an admin. The first admin is set directly in the database at setup.
+- An admin can add a person (name, phone, email) before they ever sign in. That row is linked to
+  their account automatically when they sign up with that email.
+- **Admin** is a per-person switch, set directly in the database.
 
 ## 2. Events and distributing books (every volunteer)
 
@@ -47,7 +47,7 @@ Nothing real is built yet. All names, books, prices and places in the mockup are
 - **Add entry** (host): the round orange + by Entries. Past event: the book picker, saved to that event.
   Current event: opens Distribute.
 - **Delete** (host): "Delete entry" or "Delete event" in the bottom bar of Edit entry and Edit event,
-  with a popup naming the event and its entry count. Deleted rows are only marked (`deleted_at`), so they can be recovered.
+  with a popup naming the event and its entry count. Rows are really deleted; the audit log keeps them for recovery.
 
 ### Places
 
@@ -61,7 +61,7 @@ Nothing real is built yet. All names, books, prices and places in the mockup are
 
 ## 3. Admin
 
-- **Admin tab (admins only):** Map, and Events: every event by everyone, newest first,
+- **Admin tab (admins only):** Map, People (add a person), and Events: every event by everyone, newest first,
   with host, date, place, volunteers and books (view only). In the mockup the admin is Satya.
 - **Map:** a circle per place, larger for more books, with period filter
   (today, this week, all). The real app uses the city's actual map.
@@ -94,13 +94,17 @@ Nothing real is built yet. All names, books, prices and places in the mockup are
   Android: Install from Chrome. iPhone: Safari, Share, Add to Home Screen; install before signing in.
   In a browser tab, a small banner shows how to install.
 - Supabase: Google sign-in, Postgres, per-row access rules.
-- Ownership: code in a GitHub organization with the temple account and the developer as owners.
-  Supabase on a new account under the temple email.
-- Data shape: entries have one row per book line (book, quantity, price at the time of sale),
-  events have one row per volunteer (hours). Each Save goes through one database function, all or nothing.
+- Ownership: code in the developer's public GitHub repo (asrajavel/book-distribution).
+  Supabase on the developer's account (an email alias); Google OAuth client in the developer's
+  Google Cloud project, published unverified (sign-in shows the Supabase address). Add the temple
+  account as an owner of both later.
+- Data shape: an entry has one row per book line (book, quantity, price at the time of sale),
+  an event has one row per volunteer (hours).
+- All dates and times are IST (the database time zone), nowhere else. Each Save goes through one database function, all or nothing.
 - Leaflet with OpenStreetMap for the map.
-- No server: static hosting (Cloudflare Pages), the browser talks to Supabase with the anon key.
-  All access checks are Supabase row rules; phone linking and the admin switch are database functions.
+- No server: GitHub Pages at https://asrajavel.github.io/book-distribution/ (needs privacy.html there
+  for Google's consent screen), the browser talks to Supabase with the anon key.
+  All access checks are Supabase row rules; linking a signed-up account to its person row is a database function.
 - Audit log: every insert, update and delete on every table, written by one generic database trigger
   into one table (when, who, action, table, row, old and new row, transaction). Admins read it; nobody writes it.
   Sign-ins are in Supabase's own auth logs. Page views are not logged.

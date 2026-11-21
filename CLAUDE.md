@@ -7,6 +7,10 @@ update it whenever a requirement is decided or changed.
 
 - `requirements.md`: what the app must do, what was decided against, and open points.
 - `mockup.html`: single-file clickable mockup shown to the temple. Fake data, no backend.
+- `mockup-standard.html`: copy of the mockup in the platform-standard look (system font, grouped lists, blue accent),
+  styled by the `.std` block at the end of its CSS. Same script; check it with `node check.js mockup-standard.html`.
+  Its own artifact (publish only when asked): https://claude.ai/artifact/AXX9sPueTfZiSYbLWQvAeC
+- `schema.sql`: Supabase tables, row rules, app functions and audit trigger. Run once in the SQL editor.
 - `check.js`: runs the mockup's logic: one event from the host's, a volunteer's and an admin's side, then the book tags.
   Run `node check.js mockup.html` after changing the mockup's script.
 - `archive/stock/`: parked stock and ledger feature (requirements, full mockup, check).
@@ -30,6 +34,8 @@ update it whenever a requirement is decided or changed.
   add is the round orange +; dates come before places ("17 Nov · Market").
 - Don't copy `../iskcon-subscriptions`' Vercel API-route design: it needed a server only because it began
   on Google Sheets (secret service-account key). Its daily keep-alive GitHub Action is worth reusing.
+- Typing in the Google Cloud console or Supabase dashboard via Claude in Chrome often hits page shortcuts
+  instead of the field: click the field by coordinates (getBoundingClientRect), check its value with JS, reload to confirm a save.
 - If you spent real effort discovering something that the next agent would also need
   and couldn't get quickly from the files (a gotcha, a non-obvious command, a hidden
   constraint), suggest one line for CLAUDE.md at the end of your reply. Don't suggest

@@ -13,7 +13,8 @@ const view = () => el("view").innerHTML, bottom = () => el("bottom").innerHTML;
 const drawAll = () => { for (const t of ["add", "event", "past", "admin"]) ACTS.tab(t); ACTS.go("signin"); ACTS.go("profile"); ACTS.tab("add"); };
 
 assert.equal(api.me(), "rajavel"); drawAll();
-assert(!bottom().includes("Admin") && !bottom().includes("Stats") && bottom().includes("Current event"));
+const std = html.includes('class="app std"'); // mockup-standard.html: tabs Distribute, Event, History
+assert(!bottom().includes("Admin") && !bottom().includes("Stats") && bottom().includes(std ? "Event</button>" : "Current event"));
 // No open event: Distribute is the start form. Nearest place preselected; New location opens a map
 assert(!api.cur() && view().includes("Start event") && !view().includes("pick-list"));
 assert(/data-arg="event" disabled/.test(bottom())); // Current event is greyed out with no open event
