@@ -3,19 +3,19 @@
 do $$
 declare
   ua uuid := gen_random_uuid(); ub uuid := gen_random_uuid(); uc uuid := gen_random_uuid();
-  ud uuid := gen_random_uuid(); ue uuid := gen_random_uuid();
-  a bigint; b bigint; c bigint; d bigint;
+  ud uuid := gen_random_uuid(); ue uuid := gen_random_uuid(); uf uuid := gen_random_uuid();
+  a bigint; b bigint; c bigint; d bigint; pe bigint; pf bigint;
   bk1 bigint; bk2 bigint; pl bigint; ev bigint; ev_b bigint; en bigint; n int; t text;
 begin
   -- Setup as postgres
   insert into auth.users (id, email) values
-    (ua, 't_a@x.test'), (ub, 't_b@x.test'), (uc, 't_c@x.test'), (ud, 't_d@x.test'), (ue, 't_e@x.test');
+    (ua, 't_a@x.test'), (ub, 't_b@x.test'), (uc, 't_c@x.test'), (ud, 't_d@x.test'), (ue, 't_e@x.test'), (uf, 't_f@x.test');
   update auth.users set raw_user_meta_data = '{"avatar_url": "https://lh3.googleusercontent.com/a/e"}' where id = ue;
   update auth.users set raw_user_meta_data = '{"avatar_url": "https://evil.test/x.png"}' where id = ud;
-  insert into people (user_id, email, name, phone) values (ua, 't_a@x.test', 'A', '1111111111') returning id into a;
-  insert into people (user_id, email, name, phone) values (ub, 't_b@x.test', 'B', '2222222222') returning id into b;
-  insert into people (user_id, email, name, phone) values (uc, 't_c@x.test', 'C', '3333333333') returning id into c;
-  insert into people (email, name, phone, is_admin) values ('t_d@x.test', 'D', '4444444444', true) returning id into d;
+  insert into people (user_id, email, name, phone, approved) values (ua, 't_a@x.test', 'A', '1111111111', true) returning id into a;
+  insert into people (user_id, email, name, phone, approved) values (ub, 't_b@x.test', 'B', '2222222222', true) returning id into b;
+  insert into people (user_id, email, name, phone, approved) values (uc, 't_c@x.test', 'C', '3333333333', true) returning id into c;
+  insert into people (user_id, email, name, phone, is_admin, approved) values (ud, 't_d@x.test', 'D', '4444444444', true, true) returning id into d;
   insert into books (name, language, kind, price) values ('T Book 1', 'ENG', 'common', 100) returning id into bk1;
   insert into books (name, language, kind, price) values ('T Book 2', 'ENG', 'rare', 250) returning id into bk2;
 
@@ -34,7 +34,7 @@ begin
   delete from event_volunteers where event_id = ev and person_id = a;
   get diagnostics n = row_count;
   if n <> 0 then raise exception 'host removed self'; end if;
-  begin insert into people (email, name, phone) values ('t_x@x.test', 'X', '5555555555'); raise exception 'non-admin added a person';
+  begin insert into people (email, name, phone) values ('t_x@x.test', 'X', '5555555555'); raise exception 'added a person directly';
   exception when insufficient_privilege then null; end;
 
   -- B: open event is hidden, can't record, can start own
@@ -69,15 +69,13 @@ begin
   select count(*) into n from events where id in (ev, ev_b);
   if n <> 0 then raise exception 'outsider sees events'; end if;
 
-  -- D: pre-added admin links on first sign-in, sees everything, reads audit
-  perform set_config('request.jwt.claims', json_build_object('sub', ud, 'email', 'T_D@x.test', 'role', 'authenticated')::text, true);
-  select id into n from my_person();
-  if n is distinct from d then raise exception 'admin row not linked'; end if;
+  -- D: admin sees everything, reads audit
+  perform set_config('request.jwt.claims', json_build_object('sub', ud, 'email', 't_d@x.test', 'role', 'authenticated')::text, true);
+  perform my_person();
   select count(*) into n from events where id in (ev, ev_b);
   if n <> 2 then raise exception 'admin sees % of 2 events', n; end if;
   select count(*) into n from audit_log where table_name = 'entry_lines';
   if n = 0 then raise exception 'audit empty'; end if;
-  insert into people (email, name, phone) values ('t_y@x.test', 'Y', '6666666666');
 
   -- A deletes the entry; audit keeps it
   perform set_config('request.jwt.claims', json_build_object('sub', ua, 'email', 't_a@x.test', 'role', 'authenticated')::text, true);
@@ -91,9 +89,46 @@ begin
   perform set_config('request.jwt.claims', json_build_object('sub', ue, 'email', 't_e@x.test', 'role', 'authenticated')::text, true);
   select count(*) into n from my_person();
   if n <> 0 then raise exception 'new user already has a row'; end if;
-  perform sign_up(' E ', '+91 98765 43210');
+  select id into pe from sign_up(' E ', '+91 98765 43210');
+  -- E is pending: sees nobody and nothing, can't start an event or approve self
+  select count(*) into n from people;
+  if n <> 0 then raise exception 'pending user sees % people', n; end if;
+  begin perform start_event(current_date, pl, '{}'); raise exception 'pending user started an event';
+  exception when raise_exception then if sqlerrm <> 'Not signed up' then raise; end if; end;
+  begin perform approve(pe); raise exception 'pending user approved self';
+  exception when raise_exception then if sqlerrm not like 'Only admins%' then raise; end if; end;
+  select count(*) into n from requests();
+  if n <> 0 then raise exception 'non-admin reads requests'; end if;
+
+  -- F signs up too
+  perform set_config('request.jwt.claims', json_build_object('sub', uf, 'email', 't_f@x.test', 'role', 'authenticated')::text, true);
+  select id into pf from sign_up('F', '5555555555');
+
+  -- C (approved, not admin) can't see or approve requests; others don't see pending people
+  perform set_config('request.jwt.claims', json_build_object('sub', uc, 'email', 't_c@x.test', 'role', 'authenticated')::text, true);
+  select count(*) into n from people where id in (pe, pf);
+  if n <> 0 then raise exception 'pending people visible'; end if;
+  begin perform approve(pe); raise exception 'non-admin approved';
+  exception when raise_exception then if sqlerrm not like 'Only admins%' then raise; end if; end;
+
+  -- D sees both requests with phone, approves E, rejects F
+  perform set_config('request.jwt.claims', json_build_object('sub', ud, 'email', 't_d@x.test', 'role', 'authenticated')::text, true);
+  select count(*) into n from requests() where id in (pe, pf) and phone is not null;
+  if n <> 2 then raise exception 'admin sees % of 2 requests', n; end if;
+  perform approve(pe);
+  perform reject(pf);
+  perform reject(pe); -- approved people can't be rejected
+
+  -- E is now in
+  perform set_config('request.jwt.claims', json_build_object('sub', ue, 'email', 't_e@x.test', 'role', 'authenticated')::text, true);
+  select count(*) into n from people where id = a;
+  if n <> 1 then raise exception 'approved user sees no people'; end if;
 
   execute 'reset role';
+  select count(*) into n from people where id = pf;
+  if n <> 0 then raise exception 'rejected request kept'; end if;
+  select count(*) into n from people where id = pe and approved;
+  if n <> 1 then raise exception 'approved person lost'; end if;
   select phone into t from people where user_id = ue;
   if t <> '9876543210' then raise exception 'phone stored as %', t; end if;
   select photo into t from people where user_id = ue;

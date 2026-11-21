@@ -1,5 +1,5 @@
 -- Book Distribution: Supabase schema. Run once in the SQL editor of a new project.
--- Make someone admin in the table editor: people.is_admin = true.
+-- Make someone admin in the table editor: people.is_admin = true (and approved = true for the first one).
 -- The client must name columns when reading people (select('id, name')): select('*') is denied.
 
 alter database postgres set timezone to 'Asia/Kolkata';  -- IST for now(), current_date and every timestamp
@@ -11,11 +11,12 @@ create schema private;   -- helpers for the row rules; not exposed by the Data A
 
 create table people (
   id        bigint generated always as identity primary key,
-  user_id   uuid unique references auth.users on delete set null,  -- null until they sign in
-  email     text not null unique check (email = lower(email)),     -- links the account on first sign-in
+  user_id   uuid unique references auth.users on delete set null,
+  email     text not null unique check (email = lower(email)),     -- shown to admins on the request
   name      text not null check (trim(name) <> ''),
   phone     text not null check (phone ~ '^[0-9]{10}$'),             -- stored only
   is_admin  boolean not null default false,
+  approved  boolean not null default false,                          -- sign-up is a request until an admin approves
   photo     text check (photo like 'https://lh3.googleusercontent.com/%')  -- Google photo, refreshed on sign-in
 );
 
@@ -83,15 +84,16 @@ create table audit_log (
 );
 
 -- Helpers for the row rules (security definer, so rules don't call each other in a loop)
+-- An unapproved person counts as nobody, so every rule shuts them out.
 
 create function private.me() returns bigint
 language sql stable security definer set search_path = '' as $$
-  select id from public.people where user_id = auth.uid()
+  select id from public.people where user_id = auth.uid() and approved
 $$;
 
 create function private.is_admin() returns boolean
 language sql stable security definer set search_path = '' as $$
-  select coalesce((select is_admin from public.people where user_id = auth.uid()), false)
+  select coalesce((select is_admin and approved from public.people where user_id = auth.uid()), false)
 $$;
 
 create function private.is_host(e bigint) returns boolean
@@ -123,8 +125,10 @@ alter table entries          enable row level security;
 alter table entry_lines      enable row level security;
 alter table audit_log        enable row level security;
 
-create policy read     on people for select to authenticated using (true);
-create policy admin_add on people for insert to authenticated with check ((select private.is_admin()));
+-- Approved people, plus anyone on an event I can see (so a removed volunteer keeps their name there).
+create policy read on people for select to authenticated
+  using ((select private.me()) is not null
+         and (approved or exists (select 1 from public.event_volunteers v where v.person_id = people.id)));
 
 create policy read on books  for select to authenticated using (true);
 
@@ -158,15 +162,10 @@ language sql stable security definer set search_path = '' as $$
   where id = auth.uid() and raw_user_meta_data ->> 'avatar_url' like 'https://lh3.googleusercontent.com/%'
 $$;
 
--- Signed-in person's row, or nothing (then show sign up).
--- Links a row an admin added with this Google email on first call, and refreshes the photo.
+-- Signed-in person's row (approved or not), or nothing (then show sign up). Refreshes the photo.
 create function public.my_person() returns setof public.people
 language plpgsql security definer set search_path = '' as $$
 begin
-  update public.people set user_id = auth.uid()
-  where user_id is null
-    and email = lower(auth.jwt() ->> 'email')
-    and not exists (select 1 from public.people where user_id = auth.uid());
   update public.people set photo = private.my_photo()
   where user_id = auth.uid() and photo is distinct from private.my_photo();
   return query select * from public.people where user_id = auth.uid();
@@ -180,6 +179,27 @@ language sql security definer set search_path = '' as $$
           private.my_photo())
   returning *
 $$;
+
+-- Sign-up requests, for admins: approve or reject (reject deletes it; they can ask again).
+create function public.requests() returns table (id bigint, name text, phone text, email text, photo text)
+language sql stable security definer set search_path = '' as $$
+  select id, name, phone, email, photo from public.people
+  where not approved and private.is_admin() order by id
+$$;
+
+create function public.approve(p_person bigint) returns void
+language plpgsql security definer set search_path = '' as $$
+begin
+  if not private.is_admin() then raise exception 'Only admins can approve'; end if;
+  update public.people set approved = true where id = p_person;
+end $$;
+
+create function public.reject(p_person bigint) returns void
+language plpgsql security definer set search_path = '' as $$
+begin
+  if not private.is_admin() then raise exception 'Only admins can reject'; end if;
+  delete from public.people where id = p_person and not approved;
+end $$;
 
 -- Host is always added. One open event per host is enforced by the unique index.
 create function public.start_event(p_date date, p_place bigint, p_volunteers bigint[]) returns bigint
@@ -275,8 +295,7 @@ create trigger audit after insert or update or delete on entry_lines      for ea
 revoke all on all tables in schema public from anon, authenticated;
 revoke all on all functions in schema public, private from public, anon, authenticated;
 
-grant select (id, name, photo)      on people           to authenticated;  -- phone and email stay private
-grant insert (name, phone, email)   on people           to authenticated;  -- admins only, by the rule
+grant select (id, name, photo, approved) on people      to authenticated;  -- phone and email stay private
 grant select                        on books            to authenticated;
 grant select, insert (name, lat, lng) on places         to authenticated;
 grant select, delete, update (date, place_id) on events to authenticated;
@@ -289,6 +308,7 @@ grant usage on schema private to authenticated;
 grant execute on function private.me(), private.is_admin(), private.is_host(bigint),
                           private.can_see_event(bigint) to authenticated;
 grant execute on function public.my_person(), public.sign_up(text, text),
+                          public.requests(), public.approve(bigint), public.reject(bigint),
                           public.start_event(date, bigint, bigint[]),
                           public.update_event(bigint, date, bigint, bigint[]),
                           public.save_entry(bigint, jsonb, bigint),

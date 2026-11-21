@@ -10,18 +10,21 @@ const CITY = [12.97, 77.59]; // map start when location is denied and no place i
 
 // ---------- data ----------
 /** @type {{ me: any, people: Map<number, string>, books: any[], places: any[], events: any[] }} */
-const D = { me: null, people: new Map(), photos: new Map(), books: [], places: [], events: [] };
+const D = { me: null, people: new Map(), photos: new Map(), active: new Set(), reqs: [], books: [], places: [], events: [] };
 let ME = 0; // signed-in person's id
 /** @param {any} p */
 async function q(p) { const { data, error } = await p; if (error) throw error; return data; }
 async function load() {
-  const [people, books, places, events] = await Promise.all([
-    q(sb.from("people").select("id, name, photo").order("name")),
+  const [people, books, places, events, reqs] = await Promise.all([
+    q(sb.from("people").select("id, name, photo, approved").order("name")),
     q(sb.from("books").select("id, name, short_name, language, kind, price").order("id")),
     q(sb.from("places").select("id, name, lat, lng")),
     q(sb.from("events").select("id, date, place_id, host_id, started_at, closed_at, event_volunteers(person_id, hours), entries(id, at, entry_lines(book_id, qty, price))")
       .order("date", { ascending: false }).order("id", { ascending: false })),
+    D.me?.is_admin ? q(sb.rpc("requests")) : [],
   ]);
+  D.reqs = reqs;
+  D.active = new Set(people.filter(p => p.approved).map(p => p.id)); // removed people only keep their name on old events
   D.people = new Map(people.map(p => [p.id, p.name]));
   D.photos = new Map(people.map(p => [p.id, p.photo]));
   D.books = books;
@@ -75,6 +78,7 @@ const ICON = {
   past: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
   edit: '<svg viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16z"/></svg>',
   admin: '<svg viewBox="0 0 24 24"><path d="M9 4L3 6v14l6-2 6 2 6-2V4l-6 2-6-2zM9 4v14M15 6v14"/></svg>',
+  ok: '<svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7"/></svg>',
   mail: '<svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg>',
 };
 
@@ -210,7 +214,7 @@ function placeRows() {
 }
 function peopleRows() {
   const q = S.uq || "";
-  return [...D.people.keys()].filter(u => !pick.team.includes(u) && matches(D.people.get(u) || "", q)).map(u =>
+  return [...D.active].filter(u => !pick.team.includes(u) && matches(D.people.get(u) || "", q)).map(u =>
     `<li><button class="row" type="button" data-act="team" data-arg="${u}" aria-label="Add ${NAME(u)}">
       <div class="avatar">${FACE(u)}</div><div class="info"><div class="name">${NAME(u)}</div></div><span class="round" aria-hidden="true">${ICON.plus}</span></button></li>`
   ).join("") || `<li class="muted" style="padding:12px;text-align:center">No volunteer found</li>`;
@@ -235,6 +239,13 @@ const VIEWS = {
       <div class="form">
         <button class="btn line" type="button" data-act="google">${GOOGLE}Sign in with Google</button>
         ${installHint()}
+      </div></div>` }),
+  pending: () => ({ bare: true, body: `<div class="center">
+      <h1>Waiting for approval</h1>
+      <p class="muted" style="text-align:center;margin:0">An admin will let you in soon.</p>
+      <div class="form">
+        <button class="btn" type="button" data-act="refresh">Refresh</button>
+        <button class="link" type="button" data-act="signout">Sign out</button>
       </div></div>` }),
   signup: () => ({ bare: true, body: `<div class="center">
       <h1>Sign up</h1>
@@ -297,16 +308,16 @@ const VIEWS = {
 
   admin: () => {
     const tabs = `<div class="seg">${[["map", "Map"], ["people", "People"], ["events", "Events"]].map(([v, l]) =>
-      `<button type="button" data-act="atab" data-arg="${v}" aria-pressed="${v === S.adminTab}">${l}</button>`).join("")}</div>`;
+      `<button type="button" data-act="atab" data-arg="${v}" aria-pressed="${v === S.adminTab}">${l}${v === "people" && D.reqs.length ? `<b class="badge" aria-label="${D.reqs.length} waiting">${D.reqs.length}</b>` : ""}</button>`).join("")}</div>`;
     if (S.adminTab === "events") return { title: "Admin", me: true, body: tabs + (D.events.length ? `<ul class="list">${D.events.map(ev => `<li class="row top-align">
       <div class="info"><div class="name">${NAME(ev.host_id)} · ${day(ev.date)} · ${PLACE(ev.place_id)}${ev.closed_at ? "" : ' <span class="lang">open</span>'}</div>
       <div class="sub">${names(ev)}</div>${itemList(evLines(ev))}</div>${totalEnd(evLines(ev))}</li>`).join("")}</ul>` : EMPTY("No events yet")) };
-    if (S.adminTab === "people") return { title: "Admin", me: true, body: tabs + `${sec("Add a person")}<div class="form">
-        <label class="field" aria-label="Name">${ICON.user}<input id="ap-name" placeholder="Name"></label>
-        <label class="field" aria-label="Phone"><span class="muted">+91</span><input id="ap-phone" type="tel" inputmode="numeric" placeholder="Phone number"></label>
-        <label class="field" aria-label="Email">${ICON.mail}<input id="ap-email" type="email" placeholder="Google email" autocapitalize="off"></label></div>
-      ${sec("People")}<ul class="list">${[...D.people.keys()].map(u => person(u, "", 0)).join("")}</ul>`,
-      bar: `<div class="bar"><button class="btn wide" type="button" data-act="addperson">Add person</button></div>` };
+    if (S.adminTab === "people") return { title: "Admin", me: true, body: tabs + (D.reqs.length ? `${sec("Requests")}<ul class="list">${D.reqs.map(p => `<li class="row">
+        <div class="avatar">${face(p.name, p.photo)}</div><div class="info"><div class="name">${esc(p.name)}</div><div class="sub">${esc(p.phone)}</div><div class="sub" style="white-space:normal;overflow-wrap:anywhere">${esc(p.email)}</div></div>
+        <button class="round" type="button" data-act="reject" data-arg="${p.id}" aria-label="Reject ${esc(p.name)}">${ICON.x}</button>
+        <button class="round" type="button" data-act="approve" data-arg="${p.id}" aria-label="Approve ${esc(p.name)}">${ICON.ok}</button></li>`).join("")}</ul>` : "")
+      + `${sec("People")}<ul class="list">${[...D.active].map(u => person(u, "", 0)).join("")}</ul>`
+      + (S.rej ? modal(`Reject ${esc(D.reqs.find(p => p.id === S.rej)?.name)}?`, "rejno", "rejyes", "Reject", undefined, "They can sign up again.") : "") };
     const period = `<div class="caption"><div class="seg" role="group" aria-label="Period">${Object.entries(PERIODS).map(([k, [l]]) =>
         `<button type="button" data-act="period" data-arg="${k}" aria-pressed="${k === S.period}">${l}</button>`).join("")}</div></div>`;
     return { title: "Admin", me: true, body: tabs + `<div class="map"><div class="lmap" id="map" role="img" aria-label="Books distributed by place"></div>${period}</div>` };
@@ -378,7 +389,7 @@ function render() {
   const ti = tabs.findIndex(([k]) => k === S.tab);
   $("bottom").innerHTML = v.bare ? "" : (v.bar || "") + `<nav class="tabs" aria-label="Sections" style="--n:${tabs.length}"><i class="ind" style="--i:${ti}" aria-hidden="true"></i>${
     tabs.map(([k, l]) =>
-      `<button type="button" data-act="tab" data-arg="${k}"${S.tab === k ? ' aria-current="page"' : ""}${k === "event" && !cur() ? " disabled" : ""}>${ICON[k]}${l}</button>`).join("")}</nav>`;
+      `<button type="button" data-act="tab" data-arg="${k}"${S.tab === k ? ' aria-current="page"' : ""}${k === "event" && !cur() ? " disabled" : ""}>${ICON[k]}${l}${k === "admin" && D.reqs.length ? `<b class="badge" aria-label="${D.reqs.length} waiting">${D.reqs.length}</b>` : ""}</button>`).join("")}</nav>`;
   // The tab indicator slides from the last tab to this one.
   const ind = $("bottom").querySelector(".ind");
   if (ind && lastTi >= 0 && lastTi !== ti && !still.matches)
@@ -391,7 +402,7 @@ function render() {
 }
 // Phone back (Android swipe or button, iPhone edge swipe): closes a popup, else does what the screen's back button does.
 // One history entry stands for "somewhere to go back to"; on a main tab there is none, so back leaves the app.
-const backAct = () => S.leave ? ACTS.keep : S.del ? ACTS.delno : S.acct ? ACTS.acctno : S.screen === "hours" && S.hrs.sure ? ACTS.unsure
+const backAct = () => S.leave ? ACTS.keep : S.del ? ACTS.delno : S.rej ? ACTS.rejno : S.acct ? ACTS.acctno : S.screen === "hours" && S.hrs.sure ? ACTS.unsure
   : S.backTo ? ACTS.back : S.tab !== "add" ? () => toTab("add") : null; // like Android apps: other tabs go back to Distribute, then out
 // Leaving Edit entry or Edit event with changes asks first.
 const evKey = f => JSON.stringify([f.date, f.place_id, [...f.team].sort()]);
@@ -413,7 +424,7 @@ const toTab = a => { S.tab = a; go(a, "fade"); }; // after a save or delete: not
 // Deeper screens slide in from the right, back slides them out, tabs fade (where the browser has View Transitions).
 const still = matchMedia("(prefers-reduced-motion: reduce)");
 function go(screen, dir = screen === S.backTo ? "back" : "fwd") {
-  S.screen = screen; S.del = null; S.acct = false; S.leave = null;
+  S.screen = screen; S.del = null; S.rej = null; S.acct = false; S.leave = null;
   const show = () => { render(); window.scrollTo(0, 0); };
   if (!document.startViewTransition || still.matches) return show();
   document.documentElement.dataset.nav = dir;
@@ -482,6 +493,7 @@ const ACTS = {
     await q(sb.rpc("sign_up", { p_name: name, p_phone: phone }));
     await boot();
   },
+  refresh: () => boot(),
   signout: async () => { await sb.auth.signOut(); D.me = null; go("signin"); },
   account: () => { S.acct = true; render(); },
   acctno: () => { S.acct = false; render(); },
@@ -537,15 +549,10 @@ const ACTS = {
   atab: a => { S.adminTab = a; render(); },
   period: a => { S.period = a; render(); },
   more: () => { pick.more = !pick.more; render(); },
-  addperson: async () => {
-    const name = $("ap-name").value.trim(), phone = $("ap-phone").value.replace(/\D/g, "").slice(-10), email = $("ap-email").value.trim().toLowerCase();
-    if (!name) return toast("Enter a name");
-    if (phone.length !== 10) return toast("Enter a 10-digit phone number");
-    if (!/^\S+@\S+\.\S+$/.test(email)) return toast("Enter their Google email");
-    try { await q(sb.from("people").insert({ name, phone, email })); }
-    catch (e) { return toast(e.code === "23505" ? "That email is already added" : errMsg(e)); }
-    await load(); render(); toast("Added");
-  },
+  approve: async id => { await q(sb.rpc("approve", { p_person: +id })); await load(); render(); toast("Approved"); },
+  reject: id => { S.rej = +id; render(); },
+  rejno: () => { S.rej = null; render(); },
+  rejyes: async () => { await q(sb.rpc("reject", { p_person: S.rej })); S.rej = null; await load(); render(); toast("Rejected"); },
 };
 
 let busy = false; // one database action at a time, so a double tap doesn't save twice
@@ -586,6 +593,7 @@ async function boot() {
   if (!session) return go("signin");
   const [me] = await q(sb.rpc("my_person"));
   if (!me) return go("signup");
+  if (!me.approved) return go("pending");
   D.me = me; ME = me.id;
   await load();
   try { const k = JSON.parse(localStorage.getItem("add") || "{}"); if (k.me === ME && k.ev && k.ev === cur()?.id) S.add.qty = k.qty; } catch {}

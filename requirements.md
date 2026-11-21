@@ -9,9 +9,11 @@ The books in the database are the mockup's placeholders until the real list is i
 ## 1. People and sign-in
 
 - Sign-in is with a Google account only. The phone number is only stored, never used to sign in.
-- On first sign-in (sign up) the person gives name and phone number, once.
-- An admin can add a person (name, phone, email) before they ever sign in. That row is linked to
-  their account automatically when they sign up with that email.
+- On first sign-in (sign up) the person gives name and phone number, once. That is a request:
+  until an admin approves it they see only "Waiting for approval" (Refresh, Sign out) and can't read or change anything else.
+- Nobody is added by an admin; every person comes from a sign-up request.
+- Rejecting deletes the request (they can ask again). Removing approval later locks a person out; their past entries stay.
+- Pending people don't appear in volunteer pickers or anywhere else. Enforced by the row rules.
 - **Admin** is a per-person switch, set directly in the database.
 - Avatars show the person's Google photo (saved on each sign-in), else initials.
 
@@ -68,7 +70,8 @@ The books in the database are the mockup's placeholders until the real list is i
 
 ## 3. Admin
 
-- **Admin tab (admins only):** Map, People (add a person), and Events: every event by everyone, newest first,
+- **Admin tab (admins only):** Map, People (requests at the top with Approve / Reject; a count badge
+  on the Admin tab while any wait), and Events: every event by everyone, newest first,
   with host, date, place, volunteers and books (view only). In the mockup the admin is Satya.
 - **Map:** a circle per place, larger for more books, with period filter
   (today, this week, all). The real app uses the city's actual map.
