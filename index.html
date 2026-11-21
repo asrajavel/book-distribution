@@ -121,7 +121,7 @@ h2 { margin: 8px 0 -4px; font-size: 14px; font-weight: 600; color: var(--muted);
 .link { border: 0; background: none; color: var(--accent); font-weight: 600; padding: 12px; align-self: center; }
 
 /* admin */
-.map { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; overflow: hidden; }
+.map { isolation: isolate; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; overflow: hidden; } /* keeps Leaflet's z-index 400+ layers under popups and toasts */
 .modal { position: fixed; inset: 0; z-index: 10; display: grid; place-items: center; padding: 16px; background: rgb(0 0 0 / .45); }
 .modal .card { width: 100%; max-width: 340px; background: var(--surface); border-radius: 16px; padding: 20px; display: flex; flex-direction: column; gap: 16px; }
 .modal h3 { margin: 0; font-family: var(--display); font-size: 20px; text-align: center; }
