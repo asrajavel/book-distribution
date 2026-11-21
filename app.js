@@ -45,7 +45,7 @@ const evOf = id => D.events.find(e => e.id === id);
 const cur = () => D.events.find(e => !e.closed_at && e.host_id === ME); // one open event per person
 const rupees = n => "₹" + Math.round(n).toLocaleString("en-IN");
 const day = s => s === TODAY ? "Today" : new Date(s + "T00:00").toLocaleDateString("en-IN", { day: "numeric", month: "short" });
-const time = t => new Date(t).toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit", hour12: false });
+const time = t => new Date(t).toLocaleTimeString("en-US", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit", hour12: true }); // 02:52 PM (en-IN would give "pm")
 const booksN = n => n + (n === 1 ? " book" : " books");
 const initials = name => String(name).split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase();
 // Google photo, else initials (also when Google refuses it: it rate-limits repeat loads with 429).
