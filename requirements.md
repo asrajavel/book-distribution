@@ -3,8 +3,8 @@
 An app for ISKCON temple volunteers to record the books they distribute, and for a few
 main volunteers to track books and money moving between people.
 
-Status: requirements agreed in discussion, shown as a clickable mockup (`mockup.html`).
-Nothing real is built yet. All names, books, prices and places in the mockup are placeholders.
+Status: built and live at https://asrajavel.github.io/book-distribution/ in the look of `mockup-standard.html`.
+The books in the database are the mockup's placeholders until the real list is in.
 
 ## 1. People and sign-in
 
@@ -86,7 +86,7 @@ Nothing real is built yet. All names, books, prices and places in the mockup are
 
 - Real book list and prices.
 - Which books are common and which are rare.
-- The mockup fakes the phone's location, and its pin moves by tapping the sketch map.
+- The city the map starts at when location is denied and no place is saved (`CITY` in app.js, a placeholder).
 
 ## 6. Planned build
 
@@ -101,6 +101,8 @@ Nothing real is built yet. All names, books, prices and places in the mockup are
 - Data shape: an entry has one row per book line (book, quantity, price at the time of sale),
   an event has one row per volunteer (hours).
 - All dates and times are IST (the database time zone), nowhere else. Each Save goes through one database function, all or nothing.
+- Plain HTML, CSS and JS modules, no build step or framework. supabase-js and Leaflet from a CDN at pinned versions.
+  `// @ts-check` for editor type checks. Hand-written manifest and service worker (bump its version on each release).
 - Leaflet with OpenStreetMap for the map.
 - No server: GitHub Pages at https://asrajavel.github.io/book-distribution/ (needs privacy.html there
   for Google's consent screen), the browser talks to Supabase with the anon key.

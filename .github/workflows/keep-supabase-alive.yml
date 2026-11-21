@@ -1,0 +1,21 @@
+name: Keep Supabase alive
+
+# The free project pauses after a week without activity. A daily API call keeps it up.
+# The key is the public publishable key (it is in the app's code too); the call is denied
+# by the row rules, but it still reaches the database.
+on:
+  schedule:
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping
+        run: |
+          code=$(curl -s -o /dev/null -w "%{http_code}" \
+            -H "apikey: sb_publishable_CDmMVIqkDNxU75Vcy1g7jQ_WlFmQ9y2" \
+            "https://wwfwyuzmgpadwjdwltch.supabase.co/rest/v1/books?select=id&limit=1")
+          echo "HTTP $code"
+          [ "$code" -lt 500 ] && [ "$code" -ne 0 ]

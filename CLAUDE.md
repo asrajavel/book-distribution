@@ -10,7 +10,12 @@ update it whenever a requirement is decided or changed.
 - `mockup-standard.html`: copy of the mockup in the platform-standard look (system font, grouped lists, blue accent),
   styled by the `.std` block at the end of its CSS. Same script; check it with `node check.js mockup-standard.html`.
   Its own artifact (publish only when asked): https://claude.ai/artifact/AXX9sPueTfZiSYbLWQvAeC
-- `schema.sql`: Supabase tables, row rules, app functions and audit trigger. Run once in the SQL editor.
+- `index.html` + `app.js`: the real app (styles from mockup-standard.html, screens ported from its script).
+  Run locally with preview_start "app" (port 8000, the only local origin Google sign-in allows).
+  `sw.js` (bump VERSION on release), `manifest.json`, icons, `privacy.html` (linked from Google's consent screen).
+- `schema.sql`: Supabase tables, row rules, app functions and audit trigger. Applied to the live project;
+  run any change there too (Supabase connector) and keep this file matching.
+- `rls_test.sql`: row-rule test with fake users; always rolls back, ends with "ALL TESTS PASSED". Run after schema changes.
 - `check.js`: runs the mockup's logic: one event from the host's, a volunteer's and an admin's side, then the book tags.
   Run `node check.js mockup.html` after changing the mockup's script.
 - `archive/stock/`: parked stock and ledger feature (requirements, full mockup, check).

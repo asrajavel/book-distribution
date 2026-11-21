@@ -57,7 +57,8 @@ create index on event_volunteers (person_id);
 
 create table entries (
   id        bigint generated always as identity primary key,
-  event_id  bigint not null references events on delete cascade
+  event_id  bigint not null references events on delete cascade,
+  at        timestamptz not null default now()
 );
 create index on entries (event_id);
 
@@ -184,6 +185,19 @@ begin
   return v_event;
 end $$;
 
+-- Edit event: date, place and volunteers in one save. The host always stays on.
+create function public.update_event(p_event bigint, p_date date, p_place bigint, p_volunteers bigint[]) returns void
+language plpgsql security definer set search_path = '' as $$
+declare v_host bigint := private.me();
+begin
+  if not private.is_host(p_event) then raise exception 'Only the host can edit the event'; end if;
+  update public.events set date = p_date, place_id = p_place where id = p_event;
+  delete from public.event_volunteers
+  where event_id = p_event and person_id <> v_host and person_id <> all (p_volunteers);
+  insert into public.event_volunteers (event_id, person_id)
+  select p_event, p from unnest(p_volunteers) p on conflict do nothing;
+end $$;
+
 -- p_lines: [{"book_id": 1, "qty": 2}, ...]. New entry when p_entry is null, else replaces its lines.
 -- Qty 0 means not on the entry. New books take today's price; books already on it keep their price.
 create function public.save_entry(p_event bigint, p_lines jsonb, p_entry bigint default null) returns bigint
@@ -265,5 +279,6 @@ grant execute on function private.me(), private.is_admin(), private.is_host(bigi
                           private.can_see_event(bigint) to authenticated;
 grant execute on function public.my_person(), public.sign_up(text, text),
                           public.start_event(date, bigint, bigint[]),
+                          public.update_event(bigint, date, bigint, bigint[]),
                           public.save_entry(bigint, jsonb, bigint),
                           public.close_event(bigint, jsonb) to authenticated;
