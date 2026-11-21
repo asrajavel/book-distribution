@@ -232,9 +232,9 @@ body:has(.app.std) { background: var(--bg); }
 
 /* one grouped list, hairlines inset past the cover */
 .std .list { gap: 0; background: var(--surface); border-radius: 12px; overflow: hidden; }
-.std .list > li + li { background: linear-gradient(var(--line), var(--line)) 16px 0 / 100% 1px no-repeat; }
+.std .list > li + li, .std .list > li.row + li.row { background: linear-gradient(var(--line), var(--line)) 16px 0 / 100% 1px no-repeat; }
 .std #pick-list > li + li { background-position: 62px 0; }
-.std .list:has(.avatar) > li + li { background-position: 68px 0; }
+.std .list:has(.avatar) > li + li, .std .list:has(.avatar) > li.row + li.row { background-position: 68px 0; }
 .std .list .row { gap: 14px; padding: 10px 12px 10px 14px; border: 0; border-radius: 0; background: transparent; }
 .std .row .name { font-size: 17px; font-weight: 600; }
 .std .row .sub { font-size: 15px; }
