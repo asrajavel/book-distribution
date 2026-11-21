@@ -405,14 +405,18 @@ function toast(msg) {
   clearTimeout(toastTimer); toastTimer = setTimeout(() => t.hidden = true, 2000);
 }
 const errMsg = e => !navigator.onLine || /fetch|network/i.test(e?.message || "") ? "No internet. Try again."
-  : e?.code === "23505" ? "That name is already used" : e?.code === "42501" ? "Not allowed" : e?.message || "Something went wrong";
+  : e?.code === "23505" && /places_name/.test(e?.message) ? "That name is already used" : e?.code === "42501" ? "Not allowed" : e?.message || "Something went wrong";
 
 async function save() {
   const s = S.screen, ev = cur();
   if (s === "add" && !ev) {
     const f = S.evf;
     if (!f.place_id) return toast("Choose a place");
-    await q(sb.rpc("start_event", { p_date: f.date, p_place: f.place_id, p_volunteers: f.team }));
+    try { await q(sb.rpc("start_event", { p_date: f.date, p_place: f.place_id, p_volunteers: f.team })); }
+    catch (e) { // started on another phone (or tab) after this one loaded: show that event
+      if (!/one_open_event_per_host/.test(e?.message)) throw e;
+      S.evf = null; await load(); render(); return toast("You already have an event running");
+    }
     S.evf = null; await load(); render(); return toast("Event started");
   }
   if (s === "add") {
