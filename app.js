@@ -281,7 +281,7 @@ const VIEWS = {
         ${S.hrs.sure ? modal("Close event?", "unsure", "save", "Close", "btn") : ""}`,
       bar: saveBar(open ? "Close event" : "Save") };
   },
-  people: () => ({ title: "Volunteers", body: `${teamList(pick)}<label class="field" aria-label="Search volunteers">${ICON.search}<input type="search" placeholder="Search volunteers" data-bind="uq" value="${esc(S.uq)}"></label>
+  people: () => ({ title: "Volunteers", back: S.pplBack, body: `${teamList(pick)}<label class="field" aria-label="Search volunteers">${ICON.search}<input type="search" placeholder="Search volunteers" data-bind="uq" value="${esc(S.uq)}"></label>
       <ul class="list" id="ppl-list">${peopleRows()}</ul>`,
     bar: `<div class="bar"><button class="btn wide" type="button" data-act="go" data-arg="${S.pplBack}">Done</button></div>` }),
   places: () => ({ title: "Place", back: S.plBack, body: `<label class="field" aria-label="Search places">${ICON.search}<input id="pl-q" type="search" placeholder="Search places" data-bind="pq" value="${esc(S.pq)}"></label>
@@ -361,24 +361,51 @@ const $ = id => /** @type {any} */ (document.getElementById(id));
 function render() {
   const v = VIEWS[S.screen]();
   const head = v.bare ? "" : `<header class="top">
-      ${v.back ? `<button class="round" type="button" data-act="go" data-arg="${v.back}" aria-label="Back">${ICON.back}</button>` : ""}
+      ${v.back ? `<button class="round" type="button" data-act="back" aria-label="Back">${ICON.back}</button>` : ""}
       <h1>${v.sub ? `<span class="evline">${v.sub}</span>` : ""}${v.title}</h1>
       ${v.me ? `<button class="round" type="button" data-act="account" aria-label="Account">${face(D.me.name, D.me.photo)}</button>` : ""}</header>`;
-  $("view").innerHTML = head + v.body + (S.acct ? modal(esc(D.me.name), "acctno", "signout", "Sign out", "btn soft") : "");
+  S.backTo = v.back;
+  $("view").innerHTML = head + v.body + (S.acct ? modal(esc(D.me.name), "acctno", "signout", "Sign out", "btn soft") : "")
+    + (S.leave ? modal("Discard changes?", "keep", "discard", "Discard") : "");
   $("view").style.flex = v.bare || v.fill ? "1" : "";
   $("bottom").hidden = !!v.bare;
   $("bottom").innerHTML = v.bare ? "" : (v.bar || "") + `<nav class="tabs" aria-label="Sections">${
     [["add", "Distribute"], ["event", "Event"], ["past", "History"], ["admin", "Admin"]].filter(([k]) => k !== "admin" || D.me.is_admin).map(([k, l]) =>
       `<button type="button" data-act="tab" data-arg="${k}"${S.tab === k ? ' aria-current="page"' : ""}${k === "event" && !cur() ? " disabled" : ""}>${ICON[k]}${l}</button>`).join("")}</nav>`;
   mountMap();
+  syncBack();
+  // Unsaved Distribute counts survive the phone closing the app (e.g. while taking a UPI payment).
+  try { if (D.me) localStorage.setItem("add", JSON.stringify({ me: ME, ev: cur()?.id, qty: S.add.qty })); } catch {}
 }
-function go(screen) { S.screen = screen; S.del = null; S.acct = false; render(); window.scrollTo(0, 0); }
+// Phone back (Android swipe or button, iPhone edge swipe): closes a popup, else does what the screen's back button does.
+// One history entry stands for "somewhere to go back to"; on a main tab there is none, so back leaves the app.
+const backAct = () => S.leave ? ACTS.keep : S.del ? ACTS.delno : S.acct ? ACTS.acctno : S.screen === "hours" && S.hrs.sure ? ACTS.unsure
+  : S.backTo ? ACTS.back : null;
+// Leaving Edit entry or Edit event with changes asks first.
+const evKey = f => JSON.stringify([f.date, f.place_id, [...f.team].sort()]);
+const qtyKey = qty => JSON.stringify(Object.entries(qty).sort());
+const dirty = () => S.screen === "edit" ? qtyKey(S.ed.qty) !== S.ed.orig : S.screen === "evedit" ? evKey(S.ef) !== S.ef.orig : false;
+const leave = fn => { if (dirty()) { S.leave = fn; render(); } else fn(); };
+let guard = false, skip = false;
+function syncBack() {
+  if (backAct() && !guard) { history.pushState(null, ""); guard = true; }
+  else if (!backAct() && guard) { guard = false; skip = true; history.back(); } // drop it, or back would do nothing once
+}
+window.addEventListener("popstate", () => {
+  if (skip) { skip = false; return; }
+  guard = false;
+  if (busy) return syncBack(); // mid-save: stay put
+  backAct()?.();
+});
+const toTab = a => { S.tab = a; go(a); }; // after a save or delete: nothing left to discard
+function go(screen) { S.screen = screen; S.del = null; S.acct = false; S.leave = null; render(); window.scrollTo(0, 0); }
 let toastTimer;
 function toast(msg) {
   const t = $("toast"); t.textContent = msg; t.hidden = false;
   clearTimeout(toastTimer); toastTimer = setTimeout(() => t.hidden = true, 2000);
 }
-const errMsg = e => e?.code === "23505" ? "That name is already used" : e?.code === "42501" ? "Not allowed" : e?.message || "Something went wrong";
+const errMsg = e => !navigator.onLine || /fetch|network/i.test(e?.message || "") ? "No internet. Try again."
+  : e?.code === "23505" ? "That name is already used" : e?.code === "42501" ? "Not allowed" : e?.message || "Something went wrong";
 
 async function save() {
   const s = S.screen, ev = cur();
@@ -406,7 +433,7 @@ async function save() {
     if (!e.closed_at && !S.hrs.sure) { S.hrs.sure = true; return render(); }
     await q(sb.rpc("close_event", { p_event: e.id, p_hours: hours }));
     await load();
-    if (S.hrs.back === "event") { ACTS.tab("past"); return toast("Event closed"); }
+    if (S.hrs.back === "event") { toTab("past"); return toast("Event closed"); }
     go(S.hrs.back);
   } else if (s === "newplace") {
     const name = (S.np.name || "").trim();
@@ -419,6 +446,9 @@ async function save() {
 
 const ACTS = {
   go, save,
+  back: () => leave(() => go(S.backTo)),
+  keep: () => { S.leave = null; render(); },
+  discard: () => S.leave(),
   google: () => sb.auth.signInWithOAuth({ provider: "google", options: { redirectTo: location.origin + location.pathname } }),
   signup: async () => {
     const name = $("pf-name").value.trim(), phone = $("pf-phone").value.replace(/\D/g, "").slice(-10);
@@ -445,18 +475,18 @@ const ACTS = {
   },
   people: () => { S.pplBack = S.screen; S.uq = ""; go("people"); },
   team: u => { u = +u; pick.team = pick.team.includes(u) ? pick.team.filter(x => x !== u) : [...pick.team, u]; S.uq = ""; render(); },
-  tab: a => { S.tab = a; go(a); },
+  tab: a => leave(() => toTab(a)),
   pv: id => { S.pv = +id; go("pastev"); },
   edit: id => {
     const ev = S.screen === "pastev" ? evOf(S.pv) : cur(), x = ev.entries.find(x => x.id === +id);
     const qty = Object.fromEntries(x.entry_lines.map(l => [l.book_id, l.qty]));
-    S.ed = { ev: ev.id, entry: x.id, back: S.screen, qty, lang: BOOK(x.entry_lines[0]?.book_id)?.kind === "kids" ? "KIDS" : BOOK(x.entry_lines[0]?.book_id)?.language || "ENG" };
+    S.ed = { ev: ev.id, entry: x.id, back: S.screen, qty, orig: qtyKey(qty), lang: BOOK(x.entry_lines[0]?.book_id)?.kind === "kids" ? "KIDS" : BOOK(x.entry_lines[0]?.book_id)?.language || "ENG" };
     go("edit");
   },
   // + on the current event goes to Distribute; on a past one it opens the book picker for that event.
   addentry: () => {
     if (S.screen !== "pastev") return ACTS.tab("add");
-    S.ed = { ev: S.pv, entry: null, back: S.screen, qty: {}, lang: "ENG" }; go("edit");
+    S.ed = { ev: S.pv, entry: null, back: S.screen, qty: {}, orig: qtyKey({}), lang: "ENG" }; go("edit");
   },
   del: k => { S.del = k; render(); },
   delno: () => { S.del = null; render(); },
@@ -465,11 +495,11 @@ const ACTS = {
       await q(sb.from("entries").delete().eq("id", S.ed.entry)); await load(); go(S.ed.back);
     } else {
       const e = evOf(S.ef.ev);
-      await q(sb.from("events").delete().eq("id", e.id)); await load(); ACTS.tab(e.closed_at ? "past" : "add");
+      await q(sb.from("events").delete().eq("id", e.id)); await load(); toTab(e.closed_at ? "past" : "add");
     }
     toast("Deleted");
   },
-  evedit: () => { const ev = S.screen === "pastev" ? evOf(S.pv) : cur(); S.ef = { ev: ev.id, back: S.screen, date: ev.date, place_id: ev.place_id, team: [...ev.team] }; go("evedit"); },
+  evedit: () => { const ev = S.screen === "pastev" ? evOf(S.pv) : cur(); S.ef = { ev: ev.id, back: S.screen, date: ev.date, place_id: ev.place_id, team: [...ev.team] }; S.ef.orig = evKey(S.ef); go("evedit"); },
   // Close: everyone's hours start at the time since the event started, rounded to half an hour.
   close: () => {
     if (tot(pickLines(S.add.qty)).n) return toast("Save the books on Distribute first");
@@ -494,10 +524,13 @@ const ACTS = {
 };
 
 let busy = false; // one database action at a time, so a double tap doesn't save twice
-async function run(fn, arg) {
+/** @param {any} [btn] the tapped button: shows "Saving…" when the action is slow */
+async function run(fn, arg, btn) {
   if (busy) return;
   busy = true;
-  try { await fn(arg); } catch (e) { console.error(e); toast(errMsg(e)); } finally { busy = false; }
+  const label = btn?.textContent, slow = setTimeout(() => { if (btn?.classList.contains("btn")) { btn.textContent = "Saving…"; btn.disabled = true; } }, 300);
+  try { await fn(arg); } catch (e) { console.error(e); toast(errMsg(e)); }
+  finally { busy = false; clearTimeout(slow); if (btn?.disabled && btn.isConnected) { btn.textContent = label; btn.disabled = false; } }
 }
 document.addEventListener("click", e => {
   const t = /** @type {Element} */ (e.target);
@@ -508,7 +541,7 @@ document.addEventListener("click", e => {
     pick.qty[k] = Math.max(0, (pick.qty[k] || 0) + Number(b.dataset.d));
     if (!pick.qty[k]) delete pick.qty[k];
     render();
-  } else if (a) run(ACTS[a.dataset.act], a.dataset.arg);
+  } else if (a) run(ACTS[a.dataset.act], a.dataset.arg, a);
 });
 document.addEventListener("input", e => { // keep typed values without redrawing the screen
   const el = /** @type {HTMLInputElement} */ (e.target), bind = el.dataset.bind, v = el.value;
@@ -529,6 +562,7 @@ async function boot() {
   if (!me) return go("signup");
   D.me = me; ME = me.id;
   await load();
+  try { const k = JSON.parse(localStorage.getItem("add") || "{}"); if (k.me === ME && k.ev && k.ev === cur()?.id) S.add.qty = k.qty; } catch {}
   S.tab = "add"; go("add");
 }
 run(boot);

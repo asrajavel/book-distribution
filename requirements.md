@@ -39,6 +39,7 @@ The books in the database are the mockup's placeholders until the real list is i
   - Tap + / − on each book.
   - Search box: matches part of the name, or initials (KB = Krishna Book).
   - Starts at zero. Save adds an entry to the event, stays on the page, shows "Saved", and clears the quantities.
+    Unsaved quantities are kept on the phone, so they survive the app being closed.
 - **Current event:** event details (editable), its entries newest first (each editable), total.
 - **Close event:** hours for each volunteer, prefilled with the time since the start rounded to
   half an hour. Change with + / − (half an hour each) or type. Hours show one decimal (1.0).
@@ -47,6 +48,9 @@ The books in the database are the mockup's placeholders until the real list is i
   The host can edit all of it; other volunteers only see it.
 - **Add entry** (host): the round orange + by Entries. Past event: the book picker, saved to that event.
   Current event: opens Distribute.
+- **Phone back** (swipe or button) closes a popup, else does what the screen's back button does; on a main tab it leaves the app.
+  Leaving Edit entry or Edit event with changes asks "Discard changes?".
+- Slow saves show "Saving…"; no network shows "No internet. Try again."
 - **Delete** (host): "Delete entry" or "Delete event" in the bottom bar of Edit entry and Edit event,
   with a popup naming the event and its entry count. Rows are really deleted; the audit log keeps them for recovery.
 
