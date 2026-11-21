@@ -319,6 +319,8 @@ body:has(.app.std) { background: var(--bg); }
 .map.fill { flex: 1; display: flex; position: relative; min-height: 300px; }
 .map.fill .lmap { flex: 1; height: auto; }
 .map .cpin { position: absolute; left: 50%; top: 50%; width: 30px; height: 40px; transform: translate(-50%, -100%); z-index: 500; pointer-events: none; filter: drop-shadow(0 2px 2px rgb(0 0 0 / .3)); }
+.map .here { position: absolute; right: 10px; bottom: 30px; z-index: 500; width: 44px; height: 44px; background: var(--surface); color: var(--accent); box-shadow: 0 1px 4px rgb(0 0 0 / .3); }
+.leaflet-control-attribution { font-size: 10px; line-height: 1.4; }
 .map .cpin path { fill: var(--accent); } .cpin circle { fill: #fff; }
 .leaflet-container { font: inherit; background: var(--fill); }
 .leaflet-tooltip.n { padding: 0 4px; border: 0; background: transparent; box-shadow: none; color: var(--fg); font-weight: 700; font-size: 13px; }

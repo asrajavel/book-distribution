@@ -60,6 +60,7 @@ const pickLines = qty => Object.entries(qty).map(([id, n]) => ({ book_id: +id, q
 const lineArg = qty => Object.entries(qty).map(([id, n]) => ({ book_id: +id, qty: n }));
 const EMPTY = msg => `<p class="muted" style="margin:0;padding:24px 0;text-align:center">${msg}</p>`;
 const ICON = {
+  here: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2.500" fill="currentColor"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>',
   cal: '<svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>',
   pin: '<svg viewBox="0 0 24 24"><path d="M12 21s7-6.2 7-11.500A7 7 0 0 0 5 9.500C5 14.800 12 21 12 21z"/><circle cx="12" cy="9.500" r="2.500"/></svg>',
   user: '<svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.500-4 5-5 8-5s6.500 1 8 5"/></svg>',
@@ -287,7 +288,8 @@ const VIEWS = {
     bar: `<div class="bar"><button class="btn soft wide" type="button" data-act="newplace">New location</button></div>` }),
   // Pin stays in the centre; the map moves under it. Starts at the current location. Saved places show so a duplicate is noticed.
   newplace: () => ({ title: "New location", back: "places", fill: true, body: `<div class="map fill"><div class="lmap" id="map" role="application" aria-label="Map. Move it to put the pin on the place"></div>
-        <svg class="cpin" viewBox="0 0 24 32" aria-hidden="true"><path d="M12 31s10-9.500 10-18A10 10 0 0 0 2 13c0 8.500 10 18 10 18z"/><circle cx="12" cy="12.500" r="4"/></svg></div>
+        <svg class="cpin" viewBox="0 0 24 32" aria-hidden="true"><path d="M12 31s10-9.500 10-18A10 10 0 0 0 2 13c0 8.500 10 18 10 18z"/><circle cx="12" cy="12.500" r="4"/></svg>
+        <button class="round here" type="button" data-act="here" aria-label="Go to my location">${ICON.here}</button></div>
       <label class="field" aria-label="Place name">${ICON.pin}<input id="np-name" placeholder="Name this place" data-bind="name" value="${esc(S.np.name)}"></label>`,
     bar: saveBar() }),
 
@@ -316,7 +318,10 @@ function mountMap() {
   const el = document.getElementById("map");
   if (!el) return;
   const accent = getComputedStyle(el).getPropertyValue("--accent").trim(), muted = getComputedStyle(el).getPropertyValue("--muted").trim();
-  map = L.map(el, { zoomControl: false });
+  map = L.map(el, { zoomControl: false, attributionControl: false });
+  L.control.attribution({ prefix: false }).addTo(map); // credits only (the data's licence needs them), no "Leaflet"
+  const ro = new ResizeObserver(() => map.invalidateSize()); // the map measures itself before the layout settles
+  ro.observe(el); map.on("unload", () => ro.disconnect());
   // OpenFreeMap: free, no key, clean Google-like style (OpenStreetMap data); dark to match a dark phone.
   const style = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "liberty";
   /** @type {any} */ (L).maplibreGL({ style: `https://tiles.openfreemap.org/styles/${style}` }).addTo(map); // the style brings its own credits
@@ -325,6 +330,15 @@ function mountMap() {
     map.on("dragstart", () => { S.np.auto = false; });
     map.on("moveend", () => { const c = map.getCenter(); S.np.lat = c.lat; S.np.lng = c.lng; });
     map.setView([S.np.lat, S.np.lng], 17);
+    // Live blue dot with its accuracy, like Google Maps. The map follows it until moved; map.remove() stops watching.
+    const acc = L.circle([0, 0], { radius: 0, stroke: false, fillColor: "#1a73e8", fillOpacity: .15, interactive: false });
+    const dot = L.circleMarker([0, 0], { radius: 7, color: "#fff", weight: 2, fillColor: "#1a73e8", fillOpacity: 1, interactive: false });
+    map.on("locationfound", e => {
+      S.here = { lat: e.latlng.lat, lng: e.latlng.lng };
+      acc.setLatLng(e.latlng).setRadius(e.accuracy).addTo(map); dot.setLatLng(e.latlng).addTo(map);
+      if (S.np.auto) map.setView(e.latlng, Math.max(map.getZoom(), 17));
+    });
+    map.locate({ watch: true, enableHighAccuracy: true });
     return;
   }
   const from = ago(PERIODS[S.period][1]), by = new Map();
@@ -423,10 +437,10 @@ const ACTS = {
     const start = S.here || { lat: cityStart()[0], lng: cityStart()[1] };
     S.np = { name: (S.pq || "").trim(), ...start, auto: true }; // a failed search carries over as the name
     go("newplace");
-    locate(() => { // the pin follows the location until moved
-      if (S.screen !== "newplace" || !S.np.auto) return;
-      Object.assign(S.np, S.here); map?.setView([S.np.lat, S.np.lng], 17);
-    });
+  },
+  here: () => {
+    if (!S.here) return toast("Location is off");
+    S.np.auto = true; map?.setView([S.here.lat, S.here.lng], Math.max(map.getZoom(), 17));
   },
   people: () => { S.pplBack = S.screen; S.uq = ""; go("people"); },
   team: u => { u = +u; pick.team = pick.team.includes(u) ? pick.team.filter(x => x !== u) : [...pick.team, u]; S.uq = ""; render(); },
