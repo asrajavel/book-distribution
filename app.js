@@ -138,8 +138,8 @@ function picker(p) {
     const n = tagCount(p, t);
     return `<button class="chip" type="button" data-lang="${t}" aria-pressed="${t === p.lang}">${t}${n ? `<b>${n}</b>` : ""}</button>`;
   }).join("");
-  return `<label class="field" aria-label="Search books">${ICON.search}<input id="pick-q" type="search" placeholder="Search books" data-bind="q" value="${esc(p.q)}"></label>
-    <div class="chips" role="group" aria-label="Books"><i class="cind" aria-hidden="true"></i>${chips}</div><ul class="list" id="pick-list">${pickRows(p)}</ul>`;
+  return `<div class="pickhead"><label class="field" aria-label="Search books">${ICON.search}<input id="pick-q" type="search" placeholder="Search books" data-bind="q" value="${esc(p.q)}"></label>
+    <div class="chips" role="group" aria-label="Books"><i class="cind" aria-hidden="true"></i>${chips}</div></div><ul class="list" id="pick-list">${pickRows(p)}</ul>`;
 }
 // One cover per title, shared by every language: covers/<book name as a slug>.webp.
 // A title without one gets the grey slot, and is remembered (self.noCover) so it isn't fetched again on every render.
