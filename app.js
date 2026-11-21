@@ -165,9 +165,9 @@ const totalBar = (t, label = "Save", act = "save", pre = "") =>
     ${pre}${label ? `<button class="btn" type="button" data-act="${act}">${label}</button>` : ""}</div>`;
 const saveBar = (label = "Save", pre = "") => `<div class="bar">${pre}<button class="btn wide" type="button" data-act="save">${label}</button></div>`;
 const delBtn = k => `<button class="btn del" type="button" data-act="del" data-arg="${k}">Delete ${k}</button>`;
-const modal = (q, no, yes, yesLabel, cls = "btn danger") => `<div class="modal"><div class="card" role="alertdialog" aria-label="${q}"><h3>${q}</h3>
+const modal = (q, no, yes, yesLabel, cls = "btn danger", sub = "") => `<div class="modal"><div class="card" role="alertdialog" aria-label="${q}"><h3>${q}</h3>${sub ? `<p class="muted" style="margin:-4px 0 0;text-align:center">${sub}</p>` : ""}
   <div class="two"><button class="btn soft" type="button" data-act="${no}">Cancel</button><button class="${cls}" type="button" data-act="${yes}">${yesLabel}</button></div></div></div>`;
-const delModal = q => S.del ? modal(q, "delno", "delyes", "Delete") : "";
+const delModal = (q, sub = "") => S.del ? modal(q, "delno", "delyes", "Delete", undefined, sub) : "";
 const sec = (title, act = "", label = "", aria = "") => `<div class="sec"><h2>${title}</h2>${act ? `<button class="hlink" type="button" data-act="${act}" aria-label="${aria}">${label}</button>` : ""}</div>`;
 const editBtn = (act, arg, label) => `<button class="round" type="button" data-act="${act}" data-arg="${arg}" aria-label="${label}">${ICON.edit}</button>`;
 function itemList(ls) {
@@ -269,7 +269,7 @@ const VIEWS = {
   evedit: () => {
     const ev = evOf(S.ef.ev), n = ev.entries.length;
     return { title: "Edit event", back: S.ef.back, bar: saveBar("Save", delBtn("event")), body: evForm(S.ef) +
-      delModal(`Delete ${day(ev.date)} · ${PLACE(ev.place_id)} and its ${n} ${n === 1 ? "entry" : "entries"}?`) };
+      delModal("Delete this event?", !n ? "" : n === 1 ? "Its entry will be deleted too." : `Its ${n} entries will be deleted too.`) };
   },
   hours: () => {
     const ev = evOf(S.hrs.ev), open = !ev.closed_at;

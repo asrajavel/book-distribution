@@ -52,7 +52,7 @@ The books in the database are the mockup's placeholders until the real list is i
   Leaving Edit entry or Edit event with changes asks "Discard changes?".
 - Slow saves show "Saving…"; no network shows "No internet. Try again."
 - **Delete** (host): "Delete entry" or "Delete event" in the bottom bar of Edit entry and Edit event,
-  with a popup naming the event and its entry count. Rows are really deleted; the audit log keeps them for recovery.
+  with a popup: "Delete this event?" plus how many entries go with it. Rows are really deleted; the audit log keeps them for recovery.
 
 ### Places
 
