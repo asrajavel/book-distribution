@@ -12,6 +12,9 @@
 <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
 <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.css" integrity="sha256-V2sIX92Uh6ZaGSFTKMHghsB85b9toJtmazgG09AI2uk=" crossorigin="">
+<script src="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.js" integrity="sha256-vpYzxNhw4m+zfxz+XFp3GBZnEUAD6hYgeseFDY2ordE=" crossorigin=""></script>
+<script src="https://cdn.jsdelivr.net/npm/@maplibre/maplibre-gl-leaflet@0.1.4/leaflet-maplibre-gl.js" integrity="sha256-Hmz4yz61/ZCYeaob82o4P7UGyaWy27+rq85lopTdH8s=" crossorigin=""></script>
 <script type="module" src="app.js"></script>
 <style>
 /* Layout: one phone-width column; a screen title, the screen body, and a bottom area holding an optional action bar plus four tabs. */
@@ -313,6 +316,10 @@ body:has(.app.std) { background: var(--bg); }
 
 /* real app additions */
 .map .lmap { height: 340px; }
+.map.fill { flex: 1; display: flex; position: relative; min-height: 300px; }
+.map.fill .lmap { flex: 1; height: auto; }
+.map .cpin { position: absolute; left: 50%; top: 50%; width: 30px; height: 40px; transform: translate(-50%, -100%); z-index: 500; pointer-events: none; filter: drop-shadow(0 2px 2px rgb(0 0 0 / .3)); }
+.map .cpin path { fill: var(--accent); } .cpin circle { fill: #fff; }
 .leaflet-container { font: inherit; background: var(--fill); }
 .leaflet-tooltip.n { padding: 0 4px; border: 0; background: transparent; box-shadow: none; color: var(--fg); font-weight: 700; font-size: 13px; }
 .leaflet-tooltip.n::before { display: none; }

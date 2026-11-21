@@ -48,8 +48,9 @@ const day = s => s === TODAY ? "Today" : new Date(s + "T00:00").toLocaleDateStri
 const time = t => new Date(t).toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit", hour12: false });
 const booksN = n => n + (n === 1 ? " book" : " books");
 const initials = name => String(name).split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase();
-// Google photo, else initials. no-referrer: Google's photo server can refuse requests that send one.
-const face = (name, photo) => photo ? `<img src="${esc(photo)}" alt="" referrerpolicy="no-referrer">` : initials(name);
+// Google photo, else initials (also when Google refuses it: it rate-limits repeat loads with 429).
+// no-referrer: Google's photo server can refuse requests that send one.
+const face = (name, photo) => photo ? `<img src="${esc(photo)}" alt="" referrerpolicy="no-referrer" data-i="${esc(initials(name))}" onerror="this.replaceWith(this.dataset.i)">` : initials(name);
 const FACE = u => face(D.people.get(u) || "?", D.photos.get(u));
 const hr = h => h === "" || h == null ? "" : Number(h).toFixed(1); // hours always with one decimal: 1.0
 // Totals: event lines use the price at the time of sale; the picker uses today's price.
@@ -284,9 +285,9 @@ const VIEWS = {
   places: () => ({ title: "Place", back: S.plBack, body: `<label class="field" aria-label="Search places">${ICON.search}<input id="pl-q" type="search" placeholder="Search places" data-bind="pq" value="${esc(S.pq)}"></label>
       <ul class="list" id="pl-list">${placeRows()}</ul>`,
     bar: `<div class="bar"><button class="btn soft wide" type="button" data-act="newplace">New location</button></div>` }),
-  // Pin starts at the current location and can be dragged or moved by tapping. Saved places show so a duplicate is noticed.
-  newplace: () => ({ title: "New location", back: "places", body: `<div class="map"><div class="lmap" id="map" role="application" aria-label="Map. Tap to move the pin"></div>
-        <div class="caption muted">Tap or drag to move the pin</div></div>
+  // Pin stays in the centre; the map moves under it. Starts at the current location. Saved places show so a duplicate is noticed.
+  newplace: () => ({ title: "New location", back: "places", fill: true, body: `<div class="map fill"><div class="lmap" id="map" role="application" aria-label="Map. Move it to put the pin on the place"></div>
+        <svg class="cpin" viewBox="0 0 24 32" aria-hidden="true"><path d="M12 31s10-9.500 10-18A10 10 0 0 0 2 13c0 8.500 10 18 10 18z"/><circle cx="12" cy="12.500" r="4"/></svg></div>
       <label class="field" aria-label="Place name">${ICON.pin}<input id="np-name" placeholder="Name this place" data-bind="name" value="${esc(S.np.name)}"></label>`,
     bar: saveBar() }),
 
@@ -316,13 +317,13 @@ function mountMap() {
   if (!el) return;
   const accent = getComputedStyle(el).getPropertyValue("--accent").trim(), muted = getComputedStyle(el).getPropertyValue("--muted").trim();
   map = L.map(el, { zoomControl: false });
-  L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: "© OpenStreetMap" }).addTo(map);
+  // OpenFreeMap: free, no key, clean Google-like style (OpenStreetMap data); dark to match a dark phone.
+  const style = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "liberty";
+  /** @type {any} */ (L).maplibreGL({ style: `https://tiles.openfreemap.org/styles/${style}` }).addTo(map); // the style brings its own credits
   if (S.screen === "newplace") {
     D.places.forEach(p => L.circleMarker([p.lat, p.lng], { radius: 4, color: muted, fillOpacity: 1, weight: 0 }).bindTooltip(esc(p.name)).addTo(map));
-    const pin = L.marker([S.np.lat, S.np.lng], { draggable: true }).addTo(map);
-    const move = ll => { S.np.lat = ll.lat; S.np.lng = ll.lng; S.np.auto = false; pin.setLatLng(ll); };
-    pin.on("dragend", () => move(pin.getLatLng()));
-    map.on("click", e => move(e.latlng));
+    map.on("dragstart", () => { S.np.auto = false; });
+    map.on("moveend", () => { const c = map.getCenter(); S.np.lat = c.lat; S.np.lng = c.lng; });
     map.setView([S.np.lat, S.np.lng], 17);
     return;
   }
@@ -349,7 +350,7 @@ function render() {
       <h1>${v.sub ? `<span class="evline">${v.sub}</span>` : ""}${v.title}</h1>
       ${v.me ? `<button class="round" type="button" data-act="account" aria-label="Account">${face(D.me.name, D.me.photo)}</button>` : ""}</header>`;
   $("view").innerHTML = head + v.body + (S.acct ? modal(esc(D.me.name), "acctno", "signout", "Sign out", "btn soft") : "");
-  $("view").style.flex = v.bare ? "1" : "";
+  $("view").style.flex = v.bare || v.fill ? "1" : "";
   $("bottom").hidden = !!v.bare;
   $("bottom").innerHTML = v.bare ? "" : (v.bar || "") + `<nav class="tabs" aria-label="Sections">${
     [["add", "Distribute"], ["event", "Event"], ["past", "History"], ["admin", "Admin"]].filter(([k]) => k !== "admin" || D.me.is_admin).map(([k, l]) =>
@@ -425,7 +426,6 @@ const ACTS = {
     locate(() => { // the pin follows the location until moved
       if (S.screen !== "newplace" || !S.np.auto) return;
       Object.assign(S.np, S.here); map?.setView([S.np.lat, S.np.lng], 17);
-      map?.eachLayer(l => l.setLatLng && l.options.draggable && l.setLatLng([S.np.lat, S.np.lng]));
     });
   },
   people: () => { S.pplBack = S.screen; S.uq = ""; go("people"); },

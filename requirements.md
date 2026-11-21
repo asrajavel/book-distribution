@@ -55,7 +55,7 @@ The books in the database are the mockup's placeholders until the real list is i
 - A place is a name plus latitude and longitude, in one list shared by all volunteers.
 - Pick: saved places nearest first, with search. One within 150 m is preselected.
   Without location or for a past date, most recently used first.
-- New location (any volunteer): a map with the pin at the current location, movable, and
+- New location (any volunteer): a map filling the screen, pin fixed in the centre, move the map under it (starts at the current location), and
   nearby saved places shown. Type a name and save. Names are unique.
 - Location is read only on Start event (today's date) and New location, asked at that moment.
   Denied: most recently used first, and the map starts at the city.
@@ -104,7 +104,7 @@ The books in the database are the mockup's placeholders until the real list is i
 - All dates and times are IST (the database time zone), nowhere else. Each Save goes through one database function, all or nothing.
 - Plain HTML, CSS and JS modules, no build step or framework. supabase-js and Leaflet from a CDN at pinned versions.
   `// @ts-check` for editor type checks. Hand-written manifest and service worker (bump its version on each release).
-- Leaflet with OpenStreetMap for the map.
+- Leaflet with OpenFreeMap tiles via MapLibre (free, no key; light or dark with the phone).
 - No server: GitHub Pages at https://asrajavel.github.io/book-distribution/ (needs privacy.html there
   for Google's consent screen), the browser talks to Supabase with the anon key.
   All access checks are Supabase row rules; linking a signed-up account to its person row is a database function.
