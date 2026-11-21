@@ -10,6 +10,8 @@ begin
   -- Setup as postgres
   insert into auth.users (id, email) values
     (ua, 't_a@x.test'), (ub, 't_b@x.test'), (uc, 't_c@x.test'), (ud, 't_d@x.test'), (ue, 't_e@x.test');
+  update auth.users set raw_user_meta_data = '{"avatar_url": "https://lh3.googleusercontent.com/a/e"}' where id = ue;
+  update auth.users set raw_user_meta_data = '{"avatar_url": "https://evil.test/x.png"}' where id = ud;
   insert into people (user_id, email, name, phone) values (ua, 't_a@x.test', 'A', '1111111111') returning id into a;
   insert into people (user_id, email, name, phone) values (ub, 't_b@x.test', 'B', '2222222222') returning id into b;
   insert into people (user_id, email, name, phone) values (uc, 't_c@x.test', 'C', '3333333333') returning id into c;
@@ -94,6 +96,10 @@ begin
   execute 'reset role';
   select phone into t from people where user_id = ue;
   if t <> '9876543210' then raise exception 'phone stored as %', t; end if;
+  select photo into t from people where user_id = ue;
+  if t is distinct from 'https://lh3.googleusercontent.com/a/e' then raise exception 'photo stored as %', t; end if;
+  select count(*) into n from people where user_id = ud and photo is not null;
+  if n <> 0 then raise exception 'non-Google photo kept'; end if;
   select count(*) into n from audit_log where action = 'DELETE' and table_name = 'entry_lines' and person_id = a;
   if n <> 1 then raise exception 'cascade delete not audited'; end if;
 

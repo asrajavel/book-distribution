@@ -13,6 +13,7 @@ The books in the database are the mockup's placeholders until the real list is i
 - An admin can add a person (name, phone, email) before they ever sign in. That row is linked to
   their account automatically when they sign up with that email.
 - **Admin** is a per-person switch, set directly in the database.
+- Avatars show the person's Google photo (saved on each sign-in), else initials.
 
 ## 2. Events and distributing books (every volunteer)
 

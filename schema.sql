@@ -15,7 +15,8 @@ create table people (
   email     text not null unique check (email = lower(email)),     -- links the account on first sign-in
   name      text not null check (trim(name) <> ''),
   phone     text not null check (phone ~ '^[0-9]{10}$'),             -- stored only
-  is_admin  boolean not null default false
+  is_admin  boolean not null default false,
+  photo     text check (photo like 'https://lh3.googleusercontent.com/%')  -- Google photo, refreshed on sign-in
 );
 
 create table books (
@@ -150,8 +151,15 @@ create policy read on audit_log for select to authenticated using ((select priva
 
 -- Functions the app calls (supabase.rpc) -------------------------------------------
 
+-- Google photo of the signed-in user (Supabase copies it from Google at sign-in). Only a Google photo address is kept.
+create function private.my_photo() returns text
+language sql stable security definer set search_path = '' as $$
+  select raw_user_meta_data ->> 'avatar_url' from auth.users
+  where id = auth.uid() and raw_user_meta_data ->> 'avatar_url' like 'https://lh3.googleusercontent.com/%'
+$$;
+
 -- Signed-in person's row, or nothing (then show sign up).
--- Links a row an admin added with this Google email on first call.
+-- Links a row an admin added with this Google email on first call, and refreshes the photo.
 create function public.my_person() returns setof public.people
 language plpgsql security definer set search_path = '' as $$
 begin
@@ -159,14 +167,17 @@ begin
   where user_id is null
     and email = lower(auth.jwt() ->> 'email')
     and not exists (select 1 from public.people where user_id = auth.uid());
+  update public.people set photo = private.my_photo()
+  where user_id = auth.uid() and photo is distinct from private.my_photo();
   return query select * from public.people where user_id = auth.uid();
 end $$;
 
 create function public.sign_up(p_name text, p_phone text) returns setof public.people
 language sql security definer set search_path = '' as $$
-  insert into public.people (user_id, email, name, phone)
+  insert into public.people (user_id, email, name, phone, photo)
   values (auth.uid(), lower(auth.jwt() ->> 'email'), trim(p_name),
-          right(regexp_replace(p_phone, '\D', '', 'g'), 10))           -- "+91 98..." -> 10 digits
+          right(regexp_replace(p_phone, '\D', '', 'g'), 10),           -- "+91 98..." -> 10 digits
+          private.my_photo())
   returning *
 $$;
 
@@ -264,7 +275,7 @@ create trigger audit after insert or update or delete on entry_lines      for ea
 revoke all on all tables in schema public from anon, authenticated;
 revoke all on all functions in schema public, private from public, anon, authenticated;
 
-grant select (id, name)             on people           to authenticated;  -- phone and email stay private
+grant select (id, name, photo)      on people           to authenticated;  -- phone and email stay private
 grant insert (name, phone, email)   on people           to authenticated;  -- admins only, by the rule
 grant select                        on books            to authenticated;
 grant select, insert (name, lat, lng) on places         to authenticated;

@@ -10,19 +10,20 @@ const CITY = [12.97, 77.59]; // map start when location is denied and no place i
 
 // ---------- data ----------
 /** @type {{ me: any, people: Map<number, string>, books: any[], places: any[], events: any[] }} */
-const D = { me: null, people: new Map(), books: [], places: [], events: [] };
+const D = { me: null, people: new Map(), photos: new Map(), books: [], places: [], events: [] };
 let ME = 0; // signed-in person's id
 /** @param {any} p */
 async function q(p) { const { data, error } = await p; if (error) throw error; return data; }
 async function load() {
   const [people, books, places, events] = await Promise.all([
-    q(sb.from("people").select("id, name").order("name")),
+    q(sb.from("people").select("id, name, photo").order("name")),
     q(sb.from("books").select("id, name, short_name, language, kind, price").order("id")),
     q(sb.from("places").select("id, name, lat, lng")),
     q(sb.from("events").select("id, date, place_id, host_id, started_at, closed_at, event_volunteers(person_id, hours), entries(id, at, entry_lines(book_id, qty, price))")
       .order("date", { ascending: false }).order("id", { ascending: false })),
   ]);
   D.people = new Map(people.map(p => [p.id, p.name]));
+  D.photos = new Map(people.map(p => [p.id, p.photo]));
   D.books = books;
   D.places = places;
   D.events = events.map(e => ({ ...e,
@@ -47,6 +48,9 @@ const day = s => s === TODAY ? "Today" : new Date(s + "T00:00").toLocaleDateStri
 const time = t => new Date(t).toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit", hour12: false });
 const booksN = n => n + (n === 1 ? " book" : " books");
 const initials = name => String(name).split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase();
+// Google photo, else initials. no-referrer: Google's photo server can refuse requests that send one.
+const face = (name, photo) => photo ? `<img src="${esc(photo)}" alt="" referrerpolicy="no-referrer">` : initials(name);
+const FACE = u => face(D.people.get(u) || "?", D.photos.get(u));
 const hr = h => h === "" || h == null ? "" : Number(h).toFixed(1); // hours always with one decimal: 1.0
 // Totals: event lines use the price at the time of sale; the picker uses today's price.
 const tot = ls => ls.reduce((t, l) => ({ n: t.n + l.qty, amt: t.amt + l.qty * l.price }), { n: 0, amt: 0 });
@@ -171,7 +175,7 @@ function itemList(ls) {
 }
 const totalEnd = ls => { const t = tot(ls); return `<div class="end num"><strong>${t.n}</strong><span class="muted">${rupees(t.amt)}</span></div>`; };
 const names = ev => ev.team.map(u => NAME(u) + (u === ev.host_id ? " (Host)" : "")).join(", ");
-const person = (u, end, host) => `<li class="row"><div class="avatar">${initials(D.people.get(u) || "?")}</div><div class="info"><div class="name">${NAME(u)}</div>${u === host ? `<div class="sub">Host</div>` : ""}</div>${end}</li>`;
+const person = (u, end, host) => `<li class="row"><div class="avatar">${FACE(u)}</div><div class="info"><div class="name">${NAME(u)}</div>${u === host ? `<div class="sub">Host</div>` : ""}</div>${end}</li>`;
 const teamList = o => `<ul class="list">${o.team.map(u => person(u, u === ME ? "" :
   `<button class="round" type="button" data-act="team" data-arg="${u}" aria-label="Remove ${NAME(u)}">${ICON.x}</button>`, ME)).join("")}</ul>`;
 function evForm(o) {
@@ -204,7 +208,7 @@ function peopleRows() {
   const q = S.uq || "";
   return [...D.people.keys()].filter(u => !pick.team.includes(u) && matches(D.people.get(u) || "", q)).map(u =>
     `<li><button class="row" type="button" data-act="team" data-arg="${u}" aria-label="Add ${NAME(u)}">
-      <div class="avatar">${initials(D.people.get(u) || "?")}</div><div class="info"><div class="name">${NAME(u)}</div></div><span class="round" aria-hidden="true">${ICON.plus}</span></button></li>`
+      <div class="avatar">${FACE(u)}</div><div class="info"><div class="name">${NAME(u)}</div></div><span class="round" aria-hidden="true">${ICON.plus}</span></button></li>`
   ).join("") || `<li class="muted" style="padding:12px;text-align:center">No volunteer found</li>`;
 }
 const PERIODS = { today: ["Today", 0], week: ["This week", 6], all: ["All", 99999] }; // label, days back
@@ -343,7 +347,7 @@ function render() {
   const head = v.bare ? "" : `<header class="top">
       ${v.back ? `<button class="round" type="button" data-act="go" data-arg="${v.back}" aria-label="Back">${ICON.back}</button>` : ""}
       <h1>${v.sub ? `<span class="evline">${v.sub}</span>` : ""}${v.title}</h1>
-      ${v.me ? `<button class="round" type="button" data-act="account" aria-label="Account">${initials(D.me.name)}</button>` : ""}</header>`;
+      ${v.me ? `<button class="round" type="button" data-act="account" aria-label="Account">${face(D.me.name, D.me.photo)}</button>` : ""}</header>`;
   $("view").innerHTML = head + v.body + (S.acct ? modal(esc(D.me.name), "acctno", "signout", "Sign out", "btn soft") : "");
   $("view").style.flex = v.bare ? "1" : "";
   $("bottom").hidden = !!v.bare;
