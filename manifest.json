@@ -1,6 +1,6 @@
 {
   "name": "Book Distribution",
-  "short_name": "Books",
+  "short_name": "Book Distribution",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
