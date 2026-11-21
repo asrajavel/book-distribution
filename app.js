@@ -329,9 +329,9 @@ const VIEWS = {
         <button class="round" type="button" data-act="approve" data-arg="${p.id}" aria-label="Approve ${esc(p.name)}">${ICON.ok}</button></li>`).join("")}</ul>` : "")
       + `${sec("People")}<ul class="list">${[...D.active].map(u => person(u, "", 0)).join("")}</ul>`
       + (S.rej ? modal(`Reject ${esc(D.reqs.find(p => p.id === S.rej)?.name)}?`, "rejno", "rejyes", "Reject", undefined, "They can sign up again.") : "") };
-    const period = `<div class="caption"><div class="seg" role="group" aria-label="Period"><i class="cind" aria-hidden="true"></i>${Object.entries(PERIODS).map(([k, [l]]) =>
-        `<button type="button" data-act="period" data-arg="${k}" aria-pressed="${k === S.period}">${l}</button>`).join("")}</div></div>`;
-    return { title: "Admin", me: true, body: tabs + `<div class="map"><div class="lmap" id="map" role="img" aria-label="Books distributed by place"></div>${period}</div>` };
+    const period = `<div class="seg" role="group" aria-label="Period"><i class="cind" aria-hidden="true"></i>${Object.entries(PERIODS).map(([k, [l]]) =>
+        `<button type="button" data-act="period" data-arg="${k}" aria-pressed="${k === S.period}">${l}</button>`).join("")}</div>`;
+    return { title: "Admin", me: true, fill: true, body: tabs + period + `<div class="map fill"><div class="lmap" id="map" role="img" aria-label="Books distributed by place"></div></div>` };
   },
 };
 
