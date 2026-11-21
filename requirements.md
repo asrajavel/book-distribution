@@ -48,11 +48,11 @@ The books in the database are the mockup's placeholders until the real list is i
   The host can edit all of it; other volunteers only see it.
 - **Add entry** (host): the round orange + by Entries. Past event: the book picker, saved to that event.
   Current event: opens Distribute.
-- **Phone back** (swipe or button) closes a popup, else does what the screen's back button does; on a main tab it leaves the app.
+- **Phone back** (swipe or button) closes a popup, else does what the screen's back button does; on Event, History or Admin it goes to Distribute, and on Distribute it leaves the app.
   Leaving Edit entry or Edit event with changes asks "Discard changes?".
 - Slow saves show "Saving…"; no network shows "No internet. Try again."
 - Motion (off with the phone's reduce-motion setting): deeper screens slide in from the right and back slides them out,
-  tabs fade; popups and the toast rise in; buttons shrink when pressed; a count bumps on + / −; a just-saved entry is highlighted once.
+  tabs fade and a bar above the tabs slides to the chosen one; popups and the toast rise in; buttons shrink when pressed; a count bumps on + / −; a just-saved entry is highlighted once.
 - **Delete** (host): "Delete entry" or "Delete event" in the bottom bar of Edit entry and Edit event,
   with a popup: "Delete this event?" plus how many entries go with it. Rows are really deleted; the audit log keeps them for recovery.
 

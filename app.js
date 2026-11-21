@@ -358,6 +358,7 @@ const cityStart = () => D.places.length ? [D.places.reduce((s, p) => s + p.lat, 
 
 // ---------- render ----------
 const $ = id => /** @type {any} */ (document.getElementById(id));
+let lastTi = -1;
 function render() {
   const v = VIEWS[S.screen]();
   const head = v.bare ? "" : `<header class="top">
@@ -372,9 +373,16 @@ function render() {
   if ($("view").querySelector(".flash")) S.flash = null; // the saved entry has been seen once
   $("view").style.flex = v.bare || v.fill ? "1" : "";
   $("bottom").hidden = !!v.bare;
-  $("bottom").innerHTML = v.bare ? "" : (v.bar || "") + `<nav class="tabs" aria-label="Sections">${
-    [["add", "Distribute"], ["event", "Event"], ["past", "History"], ["admin", "Admin"]].filter(([k]) => k !== "admin" || D.me.is_admin).map(([k, l]) =>
+  const tabs = [["add", "Distribute"], ["event", "Event"], ["past", "History"], ["admin", "Admin"]].filter(([k]) => k !== "admin" || D.me?.is_admin);
+  const ti = tabs.findIndex(([k]) => k === S.tab);
+  $("bottom").innerHTML = v.bare ? "" : (v.bar || "") + `<nav class="tabs" aria-label="Sections" style="--n:${tabs.length}"><i class="ind" style="--i:${ti}" aria-hidden="true"></i>${
+    tabs.map(([k, l]) =>
       `<button type="button" data-act="tab" data-arg="${k}"${S.tab === k ? ' aria-current="page"' : ""}${k === "event" && !cur() ? " disabled" : ""}>${ICON[k]}${l}</button>`).join("")}</nav>`;
+  // The tab indicator slides from the last tab to this one.
+  const ind = $("bottom").querySelector(".ind");
+  if (ind && lastTi >= 0 && lastTi !== ti && !still.matches)
+    ind.animate([{ transform: `translateX(${(lastTi - ti) * 100}%)` }, { transform: "none" }], { duration: 280, easing: "cubic-bezier(.2, .8, .2, 1)" });
+  if (ind) lastTi = ti;
   mountMap();
   syncBack();
   // Unsaved Distribute counts survive the phone closing the app (e.g. while taking a UPI payment).
@@ -383,7 +391,7 @@ function render() {
 // Phone back (Android swipe or button, iPhone edge swipe): closes a popup, else does what the screen's back button does.
 // One history entry stands for "somewhere to go back to"; on a main tab there is none, so back leaves the app.
 const backAct = () => S.leave ? ACTS.keep : S.del ? ACTS.delno : S.acct ? ACTS.acctno : S.screen === "hours" && S.hrs.sure ? ACTS.unsure
-  : S.backTo ? ACTS.back : null;
+  : S.backTo ? ACTS.back : S.tab !== "add" ? () => toTab("add") : null; // like Android apps: other tabs go back to Distribute, then out
 // Leaving Edit entry or Edit event with changes asks first.
 const evKey = f => JSON.stringify([f.date, f.place_id, [...f.team].sort()]);
 const qtyKey = qty => JSON.stringify(Object.entries(qty).sort());
