@@ -61,7 +61,7 @@ const tot = ls => ls.reduce((t, l) => ({ n: t.n + l.qty, amt: t.amt + l.qty * l.
 const evLines = ev => ev.entries.flatMap(x => x.entry_lines);
 const pickLines = qty => Object.entries(qty).map(([id, n]) => ({ book_id: +id, qty: n, price: BOOK(+id)?.price || 0 }));
 const lineArg = qty => Object.entries(qty).map(([id, n]) => ({ book_id: +id, qty: n }));
-const EMPTY = msg => `<p class="muted" style="margin:0;padding:24px 0;text-align:center">${msg}</p>`;
+const EMPTY = msg => `<p class="empty">${msg}</p>`;
 const GOOGLE = '<svg class="g" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.540 0 6.710 1.220 9.210 3.600l6.850-6.850C35.900 2.380 30.470 0 24 0 14.620 0 6.510 5.380 2.560 13.220l7.980 6.190C12.430 13.720 17.740 9.500 24 9.500z"/><path fill="#4285F4" d="M46.980 24.550c0-1.570-.150-3.090-.380-4.550H24v9.020h12.940c-.580 2.960-2.260 5.480-4.780 7.180l7.730 6c4.510-4.180 7.090-10.360 7.090-17.650z"/><path fill="#FBBC05" d="M10.530 28.590c-.480-1.450-.760-2.990-.760-4.590s.270-3.140.760-4.590l-7.980-6.190C.920 16.460 0 20.120 0 24c0 3.880.920 7.540 2.560 10.780l7.970-6.190z"/><path fill="#34A853" d="M24 48c6.480 0 11.930-2.130 15.890-5.810l-7.730-6c-2.150 1.450-4.920 2.300-8.160 2.300-6.260 0-11.570-4.220-13.470-9.910l-7.980 6.190C6.510 42.620 14.620 48 24 48z"/></svg>'; // Google's own "G" logo, as its sign-in button guidelines ask
 const ICON = {
   here: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2.500" fill="currentColor"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>',
@@ -162,7 +162,7 @@ function pickRows(p) {
   const here = D.books.filter(b => inTag(b, p.lang) && hit(b));
   const label = b => b.short_name || b.name; // common and kids keep id order (most sold first); rare is alphabetical
   const main = here.filter(b => b.kind !== "rare"), rare = here.filter(b => b.kind === "rare").sort((a, b) => label(a).localeCompare(label(b)));
-  if (!here.length) return `<li class="muted" style="padding:12px;text-align:center">No book found</li>`;
+  if (!here.length) return `<li class="empty">No book found</li>`;
   const n = Object.entries(p.qty).reduce((s, [id, k]) => s + (BOOK(+id).kind === "rare" && inTag(BOOK(+id), p.lang) ? k : 0), 0);
   return main.map(b => bookRow(p, b)).join("") + (!rare.length || q ? "" :
     `<li><button class="link" type="button" data-act="more" aria-expanded="${!!p.more}" style="width:100%">${p.more ? "Fewer books" : "More books"}${n ? ` · ${n}` : ""}</button></li>`)
@@ -184,7 +184,7 @@ const delBtn = k => `<button class="btn del" type="button" data-act="del" data-a
 const modal = (q, no, yes, yesLabel, cls = "btn danger", sub = "") => `<div class="modal"><div class="card" role="alertdialog" aria-label="${q}"><h3>${q}</h3>${sub ? `<p class="muted" style="margin:-4px 0 0;text-align:center">${sub}</p>` : ""}
   <div class="two"><button class="btn soft" type="button" data-act="${no}">Cancel</button><button class="${cls}" type="button" data-act="${yes}">${yesLabel}</button></div></div></div>`;
 const delModal = (q, sub = "") => S.del ? modal(q, "delno", "delyes", "Delete", undefined, sub) : "";
-const sec = (title, act = "", label = "", aria = "") => `<div class="sec"><h2>${title}</h2>${act ? `<button class="hlink" type="button" data-act="${act}" aria-label="${aria}">${label}</button>` : ""}</div>`;
+const sec = (title, act = "", icon = "", aria = "") => `<div class="sec"><h2>${title}</h2>${act ? `<button class="round${icon === ICON.plus ? " add" : ""}" type="button" data-act="${act}" aria-label="${aria}">${icon}</button>` : ""}</div>`;
 const editBtn = (act, arg, label) => `<button class="round" type="button" data-act="${act}" data-arg="${arg}" aria-label="${label}">${ICON.edit}</button>`;
 function itemList(ls) {
   const m = new Map();
@@ -193,6 +193,8 @@ function itemList(ls) {
     return `<li>${n} × <b>${SHORT(b)}</b> <span class="lang">${b.language}</span></li>`; }).join("")}</ul>`;
 }
 const totalEnd = ls => { const t = tot(ls); return `<div class="end num"><strong>${t.n}</strong><span class="muted">${rupees(t.amt)}</span></div>`; };
+const evRow = e => `<li><button class="row" type="button" data-act="pv" data-arg="${e.id}">
+  <div class="info"><div class="name">${day(e.date)} · ${PLACE(e.place_id)}${e.closed_at ? "" : ' <span class="lang">open</span>'}</div><div class="sub">${names(e)}</div></div>${totalEnd(evLines(e))}</button></li>`;
 const names = ev => ev.team.map(u => NAME(u) + (u === ev.host_id ? " (Host)" : "")).join(", ");
 const person = (u, end, host) => `<li class="row"><div class="avatar">${FACE(u)}</div><div class="info"><div class="name">${NAME(u)}</div>${u === host ? `<div class="sub">Host</div>` : ""}</div>${end}</li>`;
 const teamList = o => `<ul class="list">${o.team.map(u => person(u, u === ME ? "" :
@@ -202,17 +204,17 @@ function evForm(o) {
   return `<ul class="list evf">
       <li><label class="row">${ICON.cal}<span class="name">Date</span><input type="date" value="${o.date}" max="${TODAY}" data-bind="date" aria-label="Date"></label></li>
       <li><button class="row" type="button" data-act="places">${ICON.pin}<span class="name">Place</span><span class="val">${o.place_id ? PLACE(o.place_id) : "Choose"}</span>${ICON.next}</button></li></ul>
-    ${sec("Volunteers", "people", "Add", "Add volunteers")}
+    ${sec("Volunteers", "people", ICON.plus, "Add volunteers")}
     ${teamList(o)}`;
 }
 // One event: details, hours once closed, and its entries newest first. Only the host can edit.
 function evBody(ev) {
   const mine = ev.host_id === ME;
-  const hours = !ev.closed_at ? "" : `${sec("Hours", mine ? "hours" : "", "Edit", "Edit hours")}
+  const hours = !ev.closed_at ? "" : `${sec("Hours", mine ? "hours" : "", ICON.edit, "Edit hours")}
     <ul class="list">${ev.team.map(u => person(u, `<div class="end num"><strong>${hr(ev.hours[u] || 0)} h</strong></div>`, ev.host_id)).join("")}</ul>`;
   return `<div class="row"><div class="info"><div class="name">${day(ev.date)} · ${PLACE(ev.place_id)}</div><div class="sub">${names(ev)}</div></div>
       ${mine ? editBtn("evedit", "", "Edit event") : ""}</div>
-    ${hours}${sec("Entries", mine ? "addentry" : "", "Add", "Add entry")}${ev.entries.length ? `<ul class="list">${ev.entries.map(x => `<li class="row top-align${x.id === S.flash ? " flash" : ""}">
+    ${hours}${sec("Entries", mine ? "addentry" : "", ICON.plus, "Add entry")}${ev.entries.length ? `<ul class="list">${ev.entries.map(x => `<li class="row top-align${x.id === S.flash ? " flash" : ""}">
       <div class="info"><div class="name num">${time(x.at)}</div>${itemList(x.entry_lines)}</div>${totalEnd(x.entry_lines)}
       ${mine ? editBtn("edit", x.id, "Edit entry") : ""}</li>`).join("")}</ul>` : EMPTY("No entries yet")}`;
 }
@@ -221,14 +223,14 @@ function placeRows() {
   const rows = sortedPlaces(pick.date).filter(p => matches(p.name, q)).map(p =>
     `<li><button class="row${p.id === pick.place_id ? " on" : ""}" type="button" data-act="place" data-arg="${p.id}">
       <div class="info"><div class="name">${esc(p.name)}</div></div><div class="end muted num">${withDist ? far(metres(S.here, p)) : ""}</div></button></li>`);
-  return rows.join("") || `<li class="muted" style="padding:12px;text-align:center">No place found</li>`;
+  return rows.join("") || `<li class="empty">No place found</li>`;
 }
 function peopleRows() {
   const q = S.uq || "";
   return [...D.active].filter(u => !pick.team.includes(u) && matches(D.people.get(u) || "", q)).map(u =>
     `<li><button class="row" type="button" data-act="team" data-arg="${u}" aria-label="Add ${NAME(u)}">
       <div class="avatar">${FACE(u)}</div><div class="info"><div class="name">${NAME(u)}</div></div><span class="round" aria-hidden="true">${ICON.plus}</span></button></li>`
-  ).join("") || `<li class="muted" style="padding:12px;text-align:center">No volunteer found</li>`;
+  ).join("") || `<li class="empty">No volunteer found</li>`;
 }
 const PERIODS = { today: ["Today", 0], week: ["This week", 6], all: ["All", 99999] }; // label, days back
 const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
@@ -264,7 +266,7 @@ const VIEWS = {
         <label class="field" aria-label="Name">${ICON.user}<input id="pf-name" placeholder="Name" autocomplete="name"></label>
         <label class="field" aria-label="Phone"><span class="muted">+91</span><input id="pf-phone" type="tel" inputmode="numeric" placeholder="Phone number" autocomplete="tel"></label>
         <button class="btn" type="button" data-act="signup">Sign up</button>
-        <button class="link" type="button" data-act="signout">Use another account</button>
+        <button class="link" type="button" data-act="signout">Sign out</button>
       </div></div>` }),
 
   // No open event: start one here. Then this tab records books into it.
@@ -282,11 +284,9 @@ const VIEWS = {
   },
   past: () => {
     const rows = D.events.filter(e => e.closed_at && e.team.includes(ME));
-    return { title: "History", me: true, body: rows.length ? `<ul class="list">${rows.map(e =>
-      `<li><button class="row" type="button" data-act="pv" data-arg="${e.id}">
-        <div class="info"><div class="name">${day(e.date)} · ${PLACE(e.place_id)}</div><div class="sub">${names(e)}</div></div>${totalEnd(evLines(e))}</button></li>`).join("")}</ul>` : EMPTY("No past events") };
+    return { title: "History", me: true, body: rows.length ? `<ul class="list">${rows.map(evRow).join("")}</ul>` : EMPTY("No past events") };
   },
-  pastev: () => { const ev = evOf(S.pv); return { title: "Event", back: "past", body: evBody(ev), bar: totalBar(tot(evLines(ev)), "") }; },
+  pastev: () => { const ev = evOf(S.pv); return { title: "Event", back: S.pvBack, body: evBody(ev), bar: totalBar(tot(evLines(ev)), "") }; },
   edit: () => ({ title: S.ed.entry ? "Edit entry" : "Add entry", back: S.ed.back, bar: totalBar(tot(pickLines(S.ed.qty)), "Save", "save", S.ed.entry ? delBtn("entry") : ""),
     body: picker(S.ed) + (S.ed.entry ? delModal("Delete entry?") : "") }),
   evedit: () => {
@@ -309,7 +309,7 @@ const VIEWS = {
     bar: `<div class="bar"><button class="btn wide" type="button" data-act="go" data-arg="${S.pplBack}">Done</button></div>` }),
   places: () => ({ title: "Place", back: S.plBack, body: `<label class="field" aria-label="Search places">${ICON.search}<input id="pl-q" type="search" placeholder="Search places" data-bind="pq" value="${esc(S.pq)}"></label>
       <ul class="list" id="pl-list">${placeRows()}</ul>`,
-    bar: `<div class="bar"><button class="btn soft wide" type="button" data-act="newplace">New location</button></div>` }),
+    add: ["newplace", "New location"] }),
   // Pin stays in the centre; the map moves under it. Starts at the current location. Saved places show so a duplicate is noticed.
   newplace: () => ({ title: "New location", back: "places", fill: true, body: `<div class="map fill"><div class="lmap" id="map" role="application" aria-label="Map. Move it to put the pin on the place"></div>
         <svg class="cpin" viewBox="0 0 24 32" aria-hidden="true"><path d="M12 31s10-9.500 10-18A10 10 0 0 0 2 13c0 8.500 10 18 10 18z"/><circle cx="12" cy="12.500" r="4"/></svg>
@@ -320,9 +320,7 @@ const VIEWS = {
   admin: () => {
     const tabs = `<div class="seg"><i class="cind" aria-hidden="true"></i>${[["map", "Map"], ["people", "People"], ["events", "Events"]].map(([v, l]) =>
       `<button type="button" data-act="atab" data-arg="${v}" aria-pressed="${v === S.adminTab}">${l}${v === "people" && D.reqs.length ? `<b class="badge" aria-label="${D.reqs.length} waiting">${D.reqs.length}</b>` : ""}</button>`).join("")}</div>`;
-    if (S.adminTab === "events") return { title: "Admin", me: true, body: tabs + (D.events.length ? `<ul class="list">${D.events.map(ev => `<li class="row top-align">
-      <div class="info"><div class="name">${NAME(ev.host_id)} · ${day(ev.date)} · ${PLACE(ev.place_id)}${ev.closed_at ? "" : ' <span class="lang">open</span>'}</div>
-      <div class="sub">${names(ev)}</div>${itemList(evLines(ev))}</div>${totalEnd(evLines(ev))}</li>`).join("")}</ul>` : EMPTY("No events yet")) };
+    if (S.adminTab === "events") return { title: "Admin", me: true, body: tabs + (D.events.length ? `<ul class="list">${D.events.map(evRow).join("")}</ul>` : EMPTY("No events yet")) };
     if (S.adminTab === "people") return { title: "Admin", me: true, body: tabs + (D.reqs.length ? `${sec("Requests")}<ul class="list">${D.reqs.map(p => `<li class="row">
         <div class="avatar">${face(p.name, p.photo)}</div><div class="info"><div class="name">${esc(p.name)}</div><div class="sub">${esc(p.phone)}</div><div class="sub" style="white-space:normal;overflow-wrap:anywhere">${esc(p.email)}</div></div>
         <button class="round" type="button" data-act="reject" data-arg="${p.id}" aria-label="Reject ${esc(p.name)}">${ICON.x}</button>
@@ -387,6 +385,7 @@ function render() {
   const head = v.bare ? "" : `<header class="top">
       ${v.back ? `<button class="round" type="button" data-act="back" aria-label="Back">${ICON.back}</button>` : ""}
       <h1>${v.title}</h1>
+      ${v.add ? `<button class="round add" type="button" data-act="${v.add[0]}" aria-label="${v.add[1]}">${ICON.plus}</button>` : ""}
       ${v.me ? `<button class="round" type="button" data-act="account" aria-label="Account">${face(D.me.name, D.me.photo)}</button>` : ""}</header>`;
   S.backTo = v.back;
   const open = !!$("view").querySelector(".modal"); // a popup already showing doesn't animate again
@@ -538,7 +537,7 @@ const ACTS = {
   people: () => { S.pplBack = S.screen; S.uq = ""; go("people"); },
   team: u => { u = +u; pick.team = pick.team.includes(u) ? pick.team.filter(x => x !== u) : [...pick.team, u]; S.uq = ""; render(); },
   tab: a => leave(() => toTab(a)),
-  pv: id => { S.pv = +id; go("pastev"); },
+  pv: id => { S.pv = +id; S.pvBack = S.screen; go("pastev"); },
   edit: id => {
     const ev = S.screen === "pastev" ? evOf(S.pv) : cur(), x = ev.entries.find(x => x.id === +id);
     const qty = Object.fromEntries(x.entry_lines.map(l => [l.book_id, l.qty]));

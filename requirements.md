@@ -67,7 +67,7 @@ The books are the temple's list (WYBM2026 sheet): 277 books in 10 languages plus
 - A place is a name plus latitude and longitude, in one list shared by all volunteers.
 - Pick: saved places nearest first, with search. One within 150 m is preselected.
   Without location or for a past date, most recently used first.
-- New location (any volunteer): a map filling the screen, pin fixed in the centre, move the map under it (starts at the current location), a live blue dot for the current location, a bottom-right button to go back to it, and
+- New location (any volunteer, the round + on the Place screen): a map filling the screen, pin fixed in the centre, move the map under it (starts at the current location), a live blue dot for the current location, a bottom-right button to go back to it, and
   nearby saved places shown. Type a name and save. Names are unique.
 - Location is read only on Start event (today's date) and New location, asked at that moment.
   Denied: most recently used first, and the map starts at the city.
@@ -76,9 +76,9 @@ The books are the temple's list (WYBM2026 sheet): 277 books in 10 languages plus
 
 - **Admin tab (admins only):** Map, People (requests at the top with Approve / Reject; a count badge
   on the Admin tab while any wait), and Events: every event by everyone, newest first,
-  with host, date, place, volunteers and books (view only). In the mockup the admin is Satya.
+  rows like History (open events tagged); tap to see the event (view only unless you are its host). In the mockup the admin is Satya.
 - **Map:** a circle per place, larger for more books, with period filter
-  (today, this week, all). The real app uses the city's actual map.
+  (today, this week, all) above the map; the map fills the rest of the screen. The real app uses the city's actual map.
 - Apart from admins, nobody sees events they were not on. Others don't see an event while it is open.
 - Events show as date · place everywhere.
 
