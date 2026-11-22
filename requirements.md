@@ -11,7 +11,9 @@ The books are the temple's list (WYBM2026 sheet): 277 books in 10 languages plus
 - Sign-in is with a Google account only. The phone number is only stored, never used to sign in.
 - On first sign-in (sign up) the person gives name and phone number, once. That is a request:
   until an admin approves it they see only "Waiting for approval" (Refresh, Sign out) and can't read or change anything else.
-- Nobody is added by an admin; every person comes from a sign-up request.
+- Nobody is added by an admin; every person comes from a sign-up request, except guests.
+- **Guest:** a volunteer without the app. In the volunteer picker, a search that matches no one exactly offers
+  the name with "Add as guest". A guest is a name only (no sign-in, phone or email), reused by name, marked "Guest" wherever listed.
 - Rejecting deletes the request (they can ask again). Removing approval later locks a person out; their past entries stay.
 - Pending people don't appear in volunteer pickers or anywhere else. Enforced by the row rules.
 - **Admin** is a per-person switch, set directly in the database.
@@ -76,7 +78,7 @@ The books are the temple's list (WYBM2026 sheet): 277 books in 10 languages plus
 ## 3. Admin
 
 - **Admin tab (admins only):** Map, People (requests at the top with Approve / Reject; a count badge
-  on the Admin tab while any wait), and Events: every event by everyone, newest first,
+  on the Admin tab while any wait; then everyone with phone and email, tagged Admin or Guest), and Events: every event by everyone, newest first,
   rows like History (open events tagged); tap to see the event (view only unless you are its host). In the mockup the admin is Satya.
 - **Map:** a circle per place, larger for more books, with period filter
   (today, this week, all) above the map; the map fills the rest of the screen. The real app uses the city's actual map.

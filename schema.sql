@@ -12,12 +12,14 @@ create schema private;   -- helpers for the row rules; not exposed by the Data A
 create table people (
   id        bigint generated always as identity primary key,
   user_id   uuid unique references auth.users on delete set null,
-  email     text not null unique check (email = lower(email)),     -- shown to admins on the request
+  email     text unique check (email = lower(email)),              -- shown to admins on the request
   name      text not null check (trim(name) <> ''),
-  phone     text not null check (phone ~ '^[0-9]{10}$'),             -- stored only
+  phone     text check (phone ~ '^[0-9]{10}$'),                      -- stored only
   is_admin  boolean not null default false,
   approved  boolean not null default false,                          -- sign-up is a request until an admin approves
-  photo     text check (photo like 'https://lh3.googleusercontent.com/%')  -- Google photo, refreshed on sign-in
+  photo     text check (photo like 'https://lh3.googleusercontent.com/%'),  -- Google photo, refreshed on sign-in
+  guest     boolean not null default false,                          -- no Google account, added by name (add_guest)
+  constraint people_guest_check check (case when guest then user_id is null else email is not null and phone is not null end)
 );
 
 create table books (
@@ -180,12 +182,27 @@ language sql security definer set search_path = '' as $$
   returning *
 $$;
 
--- Sign-up requests, for admins: approve or reject (reject deletes it; they can ask again).
-create function public.requests() returns table (id bigint, name text, phone text, email text, photo text)
+-- Everyone, with phone and email, for the admin's People tab. Requests are the ones not approved:
+-- approve or reject (reject deletes it; they can ask again).
+create function public.admin_people() returns table (id bigint, name text, phone text, email text, photo text, approved boolean, is_admin boolean, guest boolean)
 language sql stable security definer set search_path = '' as $$
-  select id, name, phone, email, photo from public.people
-  where not approved and private.is_admin() order by id
+  select id, name, phone, email, photo, approved, is_admin, guest from public.people
+  where private.is_admin() order by name
 $$;
+
+-- Guest: a volunteer without the app, added by name from the volunteer picker. Reuses a guest of the same name.
+create function public.add_guest(p_name text) returns bigint
+language plpgsql security definer set search_path = '' as $$
+declare v_id bigint;
+begin
+  if private.me() is null then raise exception 'Not signed up'; end if;
+  if trim(coalesce(p_name, '')) = '' then raise exception 'Name needed'; end if;
+  select id into v_id from public.people where guest and lower(name) = lower(trim(p_name)) limit 1;
+  if v_id is null then
+    insert into public.people (name, guest, approved) values (trim(p_name), true, true) returning id into v_id;
+  end if;
+  return v_id;
+end $$;
 
 create function public.approve(p_person bigint) returns void
 language plpgsql security definer set search_path = '' as $$
@@ -295,7 +312,7 @@ create trigger audit after insert or update or delete on entry_lines      for ea
 revoke all on all tables in schema public from anon, authenticated;
 revoke all on all functions in schema public, private from public, anon, authenticated;
 
-grant select (id, name, photo, approved) on people      to authenticated;  -- phone and email stay private
+grant select (id, name, photo, approved, guest) on people      to authenticated;  -- phone and email stay private
 grant select                        on books            to authenticated;
 grant select, insert (name, lat, lng) on places         to authenticated;
 grant select, delete, update (date, place_id) on events to authenticated;
@@ -308,7 +325,7 @@ grant usage on schema private to authenticated;
 grant execute on function private.me(), private.is_admin(), private.is_host(bigint),
                           private.can_see_event(bigint) to authenticated;
 grant execute on function public.my_person(), public.sign_up(text, text),
-                          public.requests(), public.approve(bigint), public.reject(bigint),
+                          public.admin_people(), public.add_guest(text), public.approve(bigint), public.reject(bigint),
                           public.start_event(date, bigint, bigint[]),
                           public.update_event(bigint, date, bigint, bigint[]),
                           public.save_entry(bigint, jsonb, bigint),

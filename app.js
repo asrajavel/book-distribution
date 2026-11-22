@@ -10,23 +10,25 @@ const CITY = [12.97, 77.59]; // map start when location is denied and no place i
 
 // ---------- data ----------
 /** @type {{ me: any, people: Map<number, string>, books: any[], places: any[], events: any[] }} */
-const D = { me: null, people: new Map(), photos: new Map(), active: new Set(), reqs: [], books: [], places: [], events: [] };
+const D = { me: null, people: new Map(), photos: new Map(), active: new Set(), guests: new Set(), reqs: [], all: [], books: [], places: [], events: [] };
 let ME = 0; // signed-in person's id
 /** @param {any} p */
 async function q(p) { const { data, error } = await p; if (error) throw error; return data; }
 async function load() {
   const [people, books, places, events, reqs] = await Promise.all([
-    q(sb.from("people").select("id, name, photo, approved").order("name")),
+    q(sb.from("people").select("id, name, photo, approved, guest").order("name")),
     q(sb.from("books").select("id, name, short_name, language, kind, price").order("id")),
     q(sb.from("places").select("id, name, lat, lng")),
     q(sb.from("events").select("id, date, place_id, host_id, started_at, closed_at, event_volunteers(person_id, hours), entries(id, at, entry_lines(book_id, qty, price))")
       .order("date", { ascending: false }).order("id", { ascending: false })),
-    D.me?.is_admin ? q(sb.rpc("requests")) : [],
+    D.me?.is_admin ? q(sb.rpc("admin_people")) : [], // everyone with phone and email; requests are the unapproved
   ]);
-  D.reqs = reqs;
+  D.all = reqs.filter(p => p.approved);
+  D.reqs = reqs.filter(p => !p.approved);
   D.active = new Set(people.filter(p => p.approved).map(p => p.id)); // removed people only keep their name on old events
   D.people = new Map(people.map(p => [p.id, p.name]));
   D.photos = new Map(people.map(p => [p.id, p.photo]));
+  D.guests = new Set(people.filter(p => p.guest).map(p => p.id));
   D.books = books;
   D.places = places;
   D.events = events.map(e => ({ ...e,
@@ -199,7 +201,8 @@ const totalEnd = ls => { const t = tot(ls); return `<div class="end num"><strong
 const evRow = e => `<li><button class="row" type="button" data-act="pv" data-arg="${e.id}">
   <div class="info"><div class="name">${day(e.date)} · ${PLACE(e.place_id)}${e.closed_at ? "" : ' <span class="lang">open</span>'}</div><div class="sub">${names(e)}</div></div>${totalEnd(evLines(e))}</button></li>`;
 const names = ev => ev.team.map(u => NAME(u) + (u === ev.host_id ? " (Host)" : "")).join(", ");
-const person = (u, end, host) => `<li class="row"><div class="avatar">${FACE(u)}</div><div class="info"><div class="name">${NAME(u)}</div>${u === host ? `<div class="sub">Host</div>` : ""}</div>${end}</li>`;
+const GUEST = u => D.guests.has(u) ? ` <span class="tag muted">Guest</span>` : "";
+const person = (u, end, host) => `<li class="row"><div class="avatar">${FACE(u)}</div><div class="info"><div class="name">${NAME(u)}${GUEST(u)}</div>${u === host ? `<div class="sub">Host</div>` : ""}</div>${end}</li>`;
 const teamList = o => `<ul class="list">${o.team.map(u => person(u, u === ME ? "" :
   `<button class="round" type="button" data-act="team" data-arg="${u}" aria-label="Remove ${NAME(u)}">${ICON.x}</button>`, ME)).join("")}</ul>`;
 function evForm(o) {
@@ -229,11 +232,15 @@ function placeRows() {
   return rows.join("") || `<li class="empty">No place found</li>`;
 }
 function peopleRows() {
-  const q = S.uq || "";
-  return [...D.active].filter(u => !pick.team.includes(u) && matches(D.people.get(u) || "", q)).map(u =>
+  const q = S.uq || "", name = q.trim();
+  const rows = [...D.active].filter(u => !pick.team.includes(u) && matches(D.people.get(u) || "", q)).map(u =>
     `<li><button class="row" type="button" data-act="team" data-arg="${u}" aria-label="Add ${NAME(u)}">
-      <div class="avatar">${FACE(u)}</div><div class="info"><div class="name">${NAME(u)}</div></div><span class="round" aria-hidden="true">${ICON.plus}</span></button></li>`
-  ).join("") || `<li class="empty">No volunteer found</li>`;
+      <div class="avatar">${FACE(u)}</div><div class="info"><div class="name">${NAME(u)}${GUEST(u)}</div></div><span class="round" aria-hidden="true">${ICON.plus}</span></button></li>`).join("");
+  // Someone without the app: add them by name as a guest (offered until the name matches a volunteer exactly).
+  const exact = [...D.active].some(u => (D.people.get(u) || "").toLowerCase() === name.toLowerCase());
+  const guest = name && !exact ? `<li><button class="row" type="button" data-act="guest" aria-label="Add ${esc(name)} as guest">
+      <div class="avatar">${esc(initials(name))}</div><div class="info"><div class="name">${esc(name)}</div><div class="sub">Add as guest</div></div><span class="round" aria-hidden="true">${ICON.plus}</span></button></li>` : "";
+  return rows + guest || `<li class="empty">No volunteer found</li>`;
 }
 const PERIODS = { today: ["Today", 0], week: ["This week", 6], all: ["All", 99999] }; // label, days back
 const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
@@ -328,7 +335,9 @@ const VIEWS = {
         <div class="avatar">${face(p.name, p.photo)}</div><div class="info"><div class="name">${esc(p.name)}</div><div class="sub">${esc(p.phone)}</div><div class="sub" style="white-space:normal;overflow-wrap:anywhere">${esc(p.email)}</div></div>
         <button class="round" type="button" data-act="reject" data-arg="${p.id}" aria-label="Reject ${esc(p.name)}">${ICON.x}</button>
         <button class="round" type="button" data-act="approve" data-arg="${p.id}" aria-label="Approve ${esc(p.name)}">${ICON.ok}</button></li>`).join("")}</ul>` : "")
-      + `${sec("People")}<ul class="list">${[...D.active].map(u => person(u, "", 0)).join("")}</ul>`
+      + `${sec("People")}<ul class="list">${D.all.map(p => `<li class="row"><div class="avatar">${face(p.name, p.photo)}</div><div class="info">
+        <div class="name">${esc(p.name)}${p.is_admin ? ` <span class="tag">Admin</span>` : ""}${p.guest ? ` <span class="tag muted">Guest</span>` : ""}</div>
+        ${p.phone ? `<div class="sub">${esc(p.phone)}</div>` : ""}${p.email ? `<div class="sub" style="white-space:normal;overflow-wrap:anywhere">${esc(p.email)}</div>` : ""}</div></li>`).join("")}</ul>`
       + (S.rej ? modal(`Reject ${esc(D.reqs.find(p => p.id === S.rej)?.name)}?`, "rejno", "rejyes", "Reject", undefined, "They can sign up again.") : "") };
     const period = `<div class="seg" role="group" aria-label="Period"><i class="cind" aria-hidden="true"></i>${Object.entries(PERIODS).map(([k, [l]]) =>
         `<button type="button" data-act="period" data-arg="${k}" aria-pressed="${k === S.period}">${l}</button>`).join("")}</div>`;
@@ -538,6 +547,12 @@ const ACTS = {
     S.np.auto = true; map?.setView([S.here.lat, S.here.lng], Math.max(map.getZoom(), 17));
   },
   people: () => { S.pplBack = S.screen; S.uq = ""; go("people"); },
+  guest: async () => {
+    const id = await q(sb.rpc("add_guest", { p_name: S.uq.trim() }));
+    await load();
+    if (!pick.team.includes(id)) pick.team = [...pick.team, id];
+    S.uq = ""; render();
+  },
   team: u => { u = +u; pick.team = pick.team.includes(u) ? pick.team.filter(x => x !== u) : [...pick.team, u]; S.uq = ""; render(); },
   tab: a => leave(() => toTab(a)),
   pv: id => { S.pv = +id; S.pvBack = S.screen; go("pastev"); },

@@ -4,7 +4,7 @@ do $$
 declare
   ua uuid := gen_random_uuid(); ub uuid := gen_random_uuid(); uc uuid := gen_random_uuid();
   ud uuid := gen_random_uuid(); ue uuid := gen_random_uuid(); uf uuid := gen_random_uuid();
-  a bigint; b bigint; c bigint; d bigint; pe bigint; pf bigint;
+  a bigint; b bigint; c bigint; d bigint; pe bigint; pf bigint; g bigint;
   bk1 bigint; bk2 bigint; pl bigint; ev bigint; ev_b bigint; en bigint; n int; t text;
 begin
   -- Setup as postgres
@@ -68,6 +68,16 @@ begin
   perform set_config('request.jwt.claims', json_build_object('sub', uc, 'email', 't_c@x.test', 'role', 'authenticated')::text, true);
   select count(*) into n from events where id in (ev, ev_b);
   if n <> 0 then raise exception 'outsider sees events'; end if;
+  -- C adds a guest, reused by name; the guest shows and can go on an event
+  g := add_guest(' T Guest ');
+  if add_guest('t guest') <> g then raise exception 'guest not reused by name'; end if;
+  begin perform add_guest('  '); raise exception 'blank guest added';
+  exception when raise_exception then if sqlerrm <> 'Name needed' then raise; end if; end;
+  select count(*) into n from people where id = g and guest and name = 'T Guest';
+  if n <> 1 then raise exception 'guest not visible'; end if;
+  perform start_event(current_date, pl, array[g]);
+  select count(*) into n from admin_people();
+  if n <> 0 then raise exception 'non-admin reads admin_people'; end if;
 
   -- D: admin sees everything, reads audit
   perform set_config('request.jwt.claims', json_build_object('sub', ud, 'email', 't_d@x.test', 'role', 'authenticated')::text, true);
@@ -97,8 +107,10 @@ begin
   exception when raise_exception then if sqlerrm <> 'Not signed up' then raise; end if; end;
   begin perform approve(pe); raise exception 'pending user approved self';
   exception when raise_exception then if sqlerrm not like 'Only admins%' then raise; end if; end;
-  select count(*) into n from requests();
+  select count(*) into n from admin_people();
   if n <> 0 then raise exception 'non-admin reads requests'; end if;
+  begin perform add_guest('X'); raise exception 'pending user added a guest';
+  exception when raise_exception then if sqlerrm <> 'Not signed up' then raise; end if; end;
 
   -- F signs up too
   perform set_config('request.jwt.claims', json_build_object('sub', uf, 'email', 't_f@x.test', 'role', 'authenticated')::text, true);
@@ -113,10 +125,14 @@ begin
 
   -- D sees both requests with phone, approves E, rejects F
   perform set_config('request.jwt.claims', json_build_object('sub', ud, 'email', 't_d@x.test', 'role', 'authenticated')::text, true);
-  select count(*) into n from requests() where id in (pe, pf) and phone is not null;
+  select count(*) into n from admin_people() where id in (pe, pf) and not approved and phone is not null;
   if n <> 2 then raise exception 'admin sees % of 2 requests', n; end if;
+  select count(*) into n from admin_people() where (id = a and phone = '1111111111' and email = 't_a@x.test' and not guest)
+                                                or (id = d and is_admin) or (id = g and guest and phone is null);
+  if n <> 3 then raise exception 'admin_people wrong (% of 3)', n; end if;
   perform approve(pe);
   perform reject(pf);
+  perform reject(g); -- guests can't be rejected
   perform reject(pe); -- approved people can't be rejected
 
   -- E is now in
@@ -125,6 +141,10 @@ begin
   if n <> 1 then raise exception 'approved user sees no people'; end if;
 
   execute 'reset role';
+  select count(*) into n from people where id = g;
+  if n <> 1 then raise exception 'guest lost'; end if;
+  begin update people set user_id = uf where id = g; raise exception 'guest given a Google account';
+  exception when check_violation then null; end;
   select count(*) into n from people where id = pf;
   if n <> 0 then raise exception 'rejected request kept'; end if;
   select count(*) into n from people where id = pe and approved;
