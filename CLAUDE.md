@@ -34,6 +34,7 @@ update it whenever a requirement is decided or changed.
   review the app by walking its screens at phone size instead.
 - `.claude/launch.json` hard-codes port 8000 in its arguments. If another session's preview holds 8000, preview_start
   moves to another port but the server never starts there: stop the other preview first.
+  If it's not one of yours, find the python http.server holding it (`Get-NetTCPConnection -LocalPort 8000`) and stop that process.
 - On the map screen, `window.map` is the #map div, not Leaflet's map (that one is module-scoped); to move the map from JS,
   focus #map and send keydown `+`/`-`/arrow keys.
 - If you spent real effort discovering something that the next agent would also need

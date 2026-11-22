@@ -358,9 +358,8 @@ function mountMap() {
   L.control.attribution({ prefix: false }).addTo(map); // credits only (the data's licence needs them), no "Leaflet"
   const ro = new ResizeObserver(() => map.invalidateSize()); // the map measures itself before the layout settles
   ro.observe(el); map.on("unload", () => ro.disconnect());
-  // OpenFreeMap: free, no key, clean Google-like style (OpenStreetMap data); dark to match a dark phone.
-  const style = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "liberty";
-  /** @type {any} */ (L).maplibreGL({ style: `https://tiles.openfreemap.org/styles/${style}` }).addTo(map); // the style brings its own credits
+  // OpenStreetMap's own tiles: free, no key, and they label apartments and buildings (vector services drop those names).
+  L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' }).addTo(map);
   if (S.screen === "newplace") {
     const spin = L.divIcon({ className: "", html: MAPPIN("spin"), iconSize: [18, 24], iconAnchor: [9, 24] }); // saved places: the centre pin, smaller; tap one to use it instead of adding a duplicate
     D.places.forEach(p => L.marker([p.lat, p.lng], { icon: spin }).bindPopup(`<div class="usep"><b>${esc(p.name)}</b><button class="btn" type="button">Use</button></div>`, { closeButton: false, offset: [0, -18], maxWidth: 260, autoPanPadding: [12, 60] })

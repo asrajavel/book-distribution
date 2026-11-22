@@ -124,7 +124,7 @@ The books are the temple's list (WYBM2026 sheet): 277 books in 10 languages plus
 - All dates and times are IST (the database time zone), nowhere else. Each Save goes through one database function, all or nothing.
 - Plain HTML, CSS and JS modules, no build step or framework. supabase-js and Leaflet from a CDN at pinned versions.
   `// @ts-check` for editor type checks. Hand-written manifest and service worker (bump its version on each release).
-- Leaflet with OpenFreeMap tiles via MapLibre (free, no key; light or dark with the phone).
+- Leaflet with OpenStreetMap's own tiles (free, no key; shows apartment and building names; light only).
 - No server: GitHub Pages at https://asrajavel.github.io/book-distribution/ (needs privacy.html there
   for Google's consent screen), the browser talks to Supabase with the anon key.
   All access checks are Supabase row rules; linking a signed-up account to its person row is a database function.
