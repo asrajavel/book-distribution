@@ -364,7 +364,8 @@ function mountMap() {
     const spin = L.divIcon({ className: "", html: MAPPIN("spin"), iconSize: [18, 24], iconAnchor: [9, 24] }); // saved places: the centre pin, smaller; tap one to use it instead of adding a duplicate
     D.places.forEach(p => L.marker([p.lat, p.lng], { icon: spin }).bindPopup(`<div class="usep"><b>${esc(p.name)}</b><button class="btn" type="button">Use</button></div>`, { closeButton: false, offset: [0, -18], maxWidth: 260, autoPanPadding: [12, 60] })
       .on("popupopen", e => { e.popup.getElement().querySelector("button").onclick = () => ACTS.place(p.id); }).addTo(map)); // Leaflet stops popup clicks reaching the document handler
-    map.on("dragstart", () => { S.np.auto = false; });
+    const stop = () => { S.np.auto = false; }; // any touch (drag or pinch) or wheel stops following, else the next GPS fix snaps the map back
+    el.addEventListener("pointerdown", stop); el.addEventListener("wheel", stop, { passive: true });
     map.on("moveend", () => { const c = map.getCenter(); S.np.lat = c.lat; S.np.lng = c.lng; });
     map.setView([S.np.lat, S.np.lng], 17);
     // Live blue dot with its accuracy, like Google Maps. The map follows it until moved; map.remove() stops watching.
