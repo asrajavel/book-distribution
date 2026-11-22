@@ -322,9 +322,10 @@ const VIEWS = {
     add: ["newplace", "New location"] }),
   // Pin stays in the centre; the map moves under it. Starts at the current location. Saved places show so a duplicate is noticed.
   newplace: () => ({ title: "New location", back: "places", fill: true, body: `<div class="map fill"><div class="lmap" id="map" role="application" aria-label="Map. Move it to put the pin on the place"></div>
-        <svg class="cpin" viewBox="0 0 24 32" aria-hidden="true"><path d="M12 31s10-9.500 10-18A10 10 0 0 0 2 13c0 8.500 10 18 10 18z"/><circle cx="12" cy="12.500" r="4"/></svg>
+        ${MAPPIN("cpin")}
         <button class="round here" type="button" data-act="here" aria-label="Go to my location">${ICON.here}</button></div>
-      <label class="field" aria-label="Place name">${ICON.pin}<input id="np-name" placeholder="Name this place" data-bind="name" value="${esc(S.np.name)}"></label>`,
+      <div class="sec"><h2><label for="np-name">Name this place</label></h2></div>
+      <label class="field">${ICON.pin}<input id="np-name" placeholder="eg: Venkateswara Temple, Bellandur" data-bind="name" value="${esc(S.np.name)}"></label>`,
     bar: saveBar() }),
 
   admin: () => {
@@ -347,11 +348,12 @@ const VIEWS = {
 
 // ---------- maps ----------
 let map = null;
+const MAPPIN = c => `<svg class="${c}" viewBox="0 0 24 32" aria-hidden="true"><path d="M12 31s10-9.500 10-18A10 10 0 0 0 2 13c0 8.500 10 18 10 18z"/><circle cx="12" cy="12.500" r="4"/></svg>`;
 function mountMap() {
   if (map) { map.remove(); map = null; }
   const el = document.getElementById("map");
   if (!el) return;
-  const accent = getComputedStyle(el).getPropertyValue("--accent").trim(), muted = getComputedStyle(el).getPropertyValue("--muted").trim();
+  const accent = getComputedStyle(el).getPropertyValue("--accent").trim();
   map = L.map(el, { zoomControl: false, attributionControl: false });
   L.control.attribution({ prefix: false }).addTo(map); // credits only (the data's licence needs them), no "Leaflet"
   const ro = new ResizeObserver(() => map.invalidateSize()); // the map measures itself before the layout settles
@@ -360,7 +362,9 @@ function mountMap() {
   const style = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "liberty";
   /** @type {any} */ (L).maplibreGL({ style: `https://tiles.openfreemap.org/styles/${style}` }).addTo(map); // the style brings its own credits
   if (S.screen === "newplace") {
-    D.places.forEach(p => L.circleMarker([p.lat, p.lng], { radius: 4, color: muted, fillOpacity: 1, weight: 0 }).bindTooltip(esc(p.name)).addTo(map));
+    const spin = L.divIcon({ className: "", html: MAPPIN("spin"), iconSize: [18, 24], iconAnchor: [9, 24] }); // saved places: the centre pin, smaller; tap one to use it instead of adding a duplicate
+    D.places.forEach(p => L.marker([p.lat, p.lng], { icon: spin }).bindPopup(`<div class="usep"><b>${esc(p.name)}</b><button class="btn" type="button">Use</button></div>`, { closeButton: false, offset: [0, -18], maxWidth: 260, autoPanPadding: [12, 60] })
+      .on("popupopen", e => { e.popup.getElement().querySelector("button").onclick = () => ACTS.place(p.id); }).addTo(map)); // Leaflet stops popup clicks reaching the document handler
     map.on("dragstart", () => { S.np.auto = false; });
     map.on("moveend", () => { const c = map.getCenter(); S.np.lat = c.lat; S.np.lng = c.lng; });
     map.setView([S.np.lat, S.np.lng], 17);
