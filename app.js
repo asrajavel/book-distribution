@@ -382,7 +382,7 @@ function mountMap() {
   const from = ago(PERIODS[S.period][1]), by = new Map();
   D.events.filter(e => e.date >= from).forEach(e => by.set(e.place_id, (by.get(e.place_id) || 0) + tot(evLines(e)).n));
   const max = Math.max(1, ...by.values()), pts = [];
-  D.places.filter(p => by.get(p.id)).forEach(p => {
+  D.places.filter(p => by.get(p.id)).sort((a, b) => by.get(b.id) - by.get(a.id)).forEach(p => { // largest first, so small circles stay on top and tappable
     const n = by.get(p.id);
     L.circleMarker([p.lat, p.lng], { radius: 8 + 22 * Math.sqrt(n / max), color: accent, weight: 1.5, fillOpacity: .28 })
       .bindTooltip(`${n}`, { permanent: true, direction: "center", className: "n" })
