@@ -3,7 +3,7 @@
 An app for ISKCON temple volunteers to record the books they distribute, and for a few
 main volunteers to track books and money moving between people.
 
-Status: built and live at https://asrajavel.github.io/book-distribution/ in the look of `mockup-standard.html`.
+Status: built and live at https://asrajavel.github.io/book-distribution/.
 The books are the temple's list (WYBM2026 sheet): 277 books in 10 languages plus kids books.
 
 ## 1. People and sign-in
@@ -79,7 +79,7 @@ The books are the temple's list (WYBM2026 sheet): 277 books in 10 languages plus
 
 - **Admin tab (admins only):** Map, People (requests at the top with Approve / Reject; a count badge
   on the Admin tab while any wait; then everyone with phone and email, tagged Admin or Guest), and Events: every event by everyone, newest first,
-  rows like History (open events tagged); tap to see the event (view only unless you are its host). In the mockup the admin is Satya.
+  rows like History (open events tagged); tap to see the event (view only unless you are its host).
 - **Map:** a circle per place, larger for more books, with period filter
   (today, this week, all) above the map; the map fills the rest of the screen. The real app uses the city's actual map.
 - Apart from admins, nobody sees events they were not on. Others don't see an event while it is open.

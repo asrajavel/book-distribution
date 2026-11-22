@@ -22,16 +22,15 @@ kind Common, Rare or Kids. Places are shared named map points. Full rules live i
 
 ## Capabilities and Constraints
 - Installable mobile-first web app (PWA), static hosting, Supabase backend. Leaflet + OpenStreetMap map.
-- Current deliverable is a single-file clickable mockup (`mockup.html`) with placeholder data; `check.js` exercises its logic.
+- Live app: `index.html` + `app.js` on GitHub Pages; the earlier mockups are in `archive/mockup/`.
 - No alert/confirm/prompt; popups are in-page.
 - Tabs: Distribute, Current event, Past events, Admin (admins only).
-- Real book list and prices are undecided.
 
 ## Brand Commitments
 None. No required name, logo or colors.
 
 ## Evidence on Hand
-Placeholder book covers are embedded in mockup.html. No real data, testimonials or brand assets.
+Book covers in `covers/`. No testimonials or brand assets.
 
 ## Product Principles
 - Speed on the street beats completeness: the distribute screen is the product.

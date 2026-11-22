@@ -1,0 +1,3 @@
+# Installed Claude skills and agents (reinstall from skills-lock.json / the impeccable skill)
+.claude/skills/
+.claude/agents/

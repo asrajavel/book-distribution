@@ -1,5 +1,5 @@
 // @ts-check
-// Book Distribution app. Screens and behaviour follow mockup-standard.html; data lives in Supabase.
+// Book Distribution app. Behaviour follows requirements.md; data lives in Supabase.
 // Every access check is a row rule or database function in schema.sql.
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/+esm";
 
