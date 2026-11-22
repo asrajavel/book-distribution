@@ -314,10 +314,10 @@ const VIEWS = {
         ${S.hrs.sure ? modal("Close event?", "unsure", "save", "Close", "btn") : ""}`,
       bar: saveBar(open ? "Close event" : "Save") };
   },
-  people: () => ({ title: "Volunteers", back: S.pplBack, body: `${teamList(pick)}<label class="field" aria-label="Search volunteers">${ICON.search}<input type="search" placeholder="Search volunteers" data-bind="uq" value="${esc(S.uq)}"></label>
+  people: () => ({ title: "Volunteers", back: S.pplBack, body: `${teamList(pick)}<div class="pickhead"><label class="field" aria-label="Search volunteers">${ICON.search}<input type="search" placeholder="Search volunteers" data-bind="uq" value="${esc(S.uq)}"></label></div>
       <ul class="list" id="ppl-list">${peopleRows()}</ul>`,
     bar: `<div class="bar"><button class="btn wide" type="button" data-act="go" data-arg="${S.pplBack}">Done</button></div>` }),
-  places: () => ({ title: "Place", back: S.plBack, body: `<label class="field" aria-label="Search places">${ICON.search}<input id="pl-q" type="search" placeholder="Search places" data-bind="pq" value="${esc(S.pq)}"></label>
+  places: () => ({ title: "Place", back: S.plBack, body: `<div class="pickhead"><label class="field" aria-label="Search places">${ICON.search}<input id="pl-q" type="search" placeholder="Search places" data-bind="pq" value="${esc(S.pq)}"></label></div>
       <ul class="list" id="pl-list">${placeRows()}</ul>`,
     add: ["newplace", "New location"] }),
   // Pin stays in the centre; the map moves under it. Starts at the current location. Saved places show so a duplicate is noticed.
