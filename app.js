@@ -156,12 +156,15 @@ function bookRow(p, b) {
         <button class="plus" type="button" data-id="${b.id}" data-d="1" aria-label="One more ${esc(b.name)}">+</button>
       </div></li>`;
 }
+// The order of the common books in every language (which books are common is the kind column).
+const MAIN = ["BG", "Krsna", "SSR", "JOSD", "SB 1", "RV", "IQ EQ SQ", "BBD", "PQPA", "SC"];
 // A language shows its common books, then rare ones folded under "More books" (search shows them too). KIDS shows kids books.
 function pickRows(p) {
   const q = p.q || "", hit = b => matches(b.name, q) || matches(b.short_name || "", q);
   const here = D.books.filter(b => inTag(b, p.lang) && hit(b));
-  const label = b => b.short_name || b.name; // common and kids keep id order (most sold first); rare is alphabetical
-  const main = here.filter(b => b.kind !== "rare"), rare = here.filter(b => b.kind === "rare").sort((a, b) => label(a).localeCompare(label(b)));
+  const label = b => b.short_name || b.name; // common follows MAIN, kids keep id order (most sold first); rare is alphabetical
+  const at = b => MAIN.indexOf(b.short_name);
+  const main = here.filter(b => b.kind !== "rare").sort((a, b) => at(a) - at(b)), rare = here.filter(b => b.kind === "rare").sort((a, b) => label(a).localeCompare(label(b)));
   if (!here.length) return `<li class="empty">No book found</li>`;
   const n = Object.entries(p.qty).reduce((s, [id, k]) => s + (BOOK(+id).kind === "rare" && inTag(BOOK(+id), p.lang) ? k : 0), 0);
   return main.map(b => bookRow(p, b)).join("") + (!rare.length || q ? "" :

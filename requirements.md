@@ -28,7 +28,8 @@ The books are the temple's list (WYBM2026 sheet): 277 books in 10 languages plus
   Current event is greyed out while there is no open event.
 - **Books:** a title in a language (Bhagavad Gita in Tamil, English, Hindi, Kannada, ...).
   Each has one fixed price and a kind: Common, Rare or Kids. No points.
-  Five common books per language (most sold at Janmastami); kids books are listed most sold first.
+  Common books, in this order, in every language that has them: BG, Krsna, SSR, JOSD, SB 1, RV, IQ EQ SQ, BBD, PQPA, SC.
+  Kids books are listed most sold first.
   Kids books (mostly coloring books) are English only.
 - Books show by short name (BG, Krsna, SSR, Iso), else the full name; search also matches the full name,
   with the language as a muted 3-letter code (ENG).
