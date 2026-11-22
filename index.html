@@ -298,7 +298,7 @@ body:has(.app.std) { background: var(--bg); }
 .std .evf input { height: 32px; padding: 0; border: 0; background: transparent; }
 .std .evf input:focus { outline: none; }
 .std .evf input::-webkit-calendar-picker-indicator { opacity: .5; }
-.std .evf input::-webkit-date-and-time-value { text-align: right; }
+.std .evf input::-webkit-date-and-time-value { flex: 1; text-align: right; }
 
 /* one rule for every screen: search boxes are grey, form fields are white like the lists */
 .std .field:not(:has(input[type=search])) { background: var(--surface); }
