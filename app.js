@@ -256,7 +256,6 @@ function installHint() { // in a browser tab only
 
 // ---------- screens: each returns { title, back, body, bar } ----------
 const VIEWS = {
-  loading: () => ({ bare: true, body: `<div class="center"><p class="muted" style="text-align:center">Loading…</p></div>` }),
   signin: () => ({ bare: true, body: `<div class="center">
       <h1>Book Distribution</h1>
       <div class="form">
@@ -309,7 +308,7 @@ const VIEWS = {
     return { title: open ? "Close event" : "Hours", back: S.hrs.back,
       body: `<h2>Hours of service</h2><ul class="list">${ev.team.map(u => person(u, `<div class="step">
         <button type="button" data-act="hr" data-arg="${u},-1" aria-label="Half an hour less for ${NAME(u)}">−</button>
-        <input class="hrs num" type="text" inputmode="decimal" data-bind="h" data-u="${u}" value="${hr(S.hrs.h[u])}" aria-label="Hours for ${NAME(u)}"><span class="muted unit">h</span>
+        <input class="hrs num" type="text" inputmode="decimal" data-bind="h" data-u="${u}" value="${hr(S.hrs.h[u])}" aria-label="Hours for ${NAME(u)}">
         <button class="plus" type="button" data-act="hr" data-arg="${u},1" aria-label="Half an hour more for ${NAME(u)}">+</button></div>`, ev.host_id)).join("")}</ul>
         ${S.hrs.sure ? modal("Close event?", "unsure", "save", "Close", "btn") : ""}`,
       bar: saveBar(open ? "Close event" : "Save") };

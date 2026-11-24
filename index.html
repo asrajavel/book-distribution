@@ -65,10 +65,9 @@ button { cursor: pointer; }
   background: var(--surface); border: 1px solid var(--line); border-radius: 12px;
 }
 .field svg { flex: none; color: var(--muted); }
-.field input, .field select { min-width: 0; width: 100%; border: 0; background: transparent; padding: 0; }
-.field input:focus, .field select:focus { outline: none; }
+.field input { min-width: 0; width: 100%; border: 0; background: transparent; padding: 0; }
+.field input:focus { outline: none; }
 .field:focus-within { border-color: var(--accent); }
-.field .ptxt { flex: 1; min-width: 0; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .form { display: flex; flex-direction: column; gap: 10px; }
 
 /* segmented control and chips */
@@ -126,9 +125,7 @@ h2 { margin: 8px 0 -4px; font-size: 14px; font-weight: 600; color: var(--muted);
 .modal { position: fixed; inset: 0; z-index: 10; display: grid; place-items: center; padding: 16px; background: rgb(0 0 0 / .45); }
 .modal .card { width: 100%; max-width: 340px; background: var(--surface); border-radius: 16px; padding: 20px; display: flex; flex-direction: column; gap: 16px; }
 .modal h3 { margin: 0; font-family: var(--display); font-size: 20px; text-align: center; }
-button.addp { border: 0; }
 .btn.del { padding: 0 16px; background: var(--surface); color: var(--due); border: 1px solid var(--line); }
-.step .unit { margin: 0 6px 0 -4px; }
 .step .hrs { width: 52px; height: 40px; padding: 0; text-align: center; border: 0; background: transparent; font-family: var(--display); font-size: 20px; font-weight: 600; }
 
 /* sign-in */
@@ -208,7 +205,6 @@ button.addp { border: 0; }
   --bg: #000000; --surface: #1c1c1e; --fg: #f2f2f7; --muted: #9a9aa1; --line: #2e2e32; --fill: #2c2c30;
   --accent: #4c9bff; --accent-fg: #04122a; --accent-soft: #10243f;
 }
-body:has(.app.std) { background: var(--bg); }
 .std { background: var(--bg); color: var(--fg); padding-top: 12px; }
 .std ::selection { background: var(--accent-soft); }
 .std input { caret-color: var(--accent); }
@@ -258,7 +254,6 @@ body:has(.app.std) { background: var(--bg); }
 .std .list .row.on .name { color: var(--accent); }
 .std .avatar { background: var(--accent-soft); color: var(--accent); }
 .std h2 { margin: 12px 0 -4px 16px; font-size: 13px; letter-spacing: .02em; }
-.std .top h2 { margin-left: 16px; }
 .std .seg { position: relative; gap: 2px; padding: 2px; border-radius: 10px; background: var(--fill); }
 .std .seg button { height: 40px; border-radius: 8px; font-size: 15px; }
 .std .seg button { position: relative; z-index: 1; background: transparent; }
@@ -270,7 +265,6 @@ body:has(.app.std) { background: var(--bg); }
 .std .modal h3 { font-family: var(--text); font-size: 18px; }
 .std .center h1 { font-family: var(--text); font-size: 34px; letter-spacing: -0.02em; }
 .std .step .hrs { height: 44px; border-inline: 1px solid var(--line); font-family: var(--text); font-size: 18px; }
-.std .step .unit { display: none; }
 .std .toast { border-radius: 12px; }
 /* the action bar is part of the page (grey, no lines); only the tab bar is white, with one hairline on top */
 .std .bottom { background: var(--bg); border-top: 0; }
